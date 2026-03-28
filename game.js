@@ -150,6 +150,13 @@ function createGame(mazes, callbacks) {
     };
   }
 
+  function stop() {
+    if (timerId) {
+      clearInterval(timerId);
+      timerId = null;
+    }
+  }
+
   return {
     startRun,
     startMaze,
@@ -157,6 +164,7 @@ function createGame(mazes, callbacks) {
     tryMoveToCell,
     getState,
     getMaze,
+    stop,
   };
 }
 

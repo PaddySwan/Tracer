@@ -203,6 +203,8 @@ function generateDailyMazes(seed) {
 export {
   getDailySeed,
   generateDailyMazes,
+  generateMaze,
+  mulberry32,
   MAZE_SIZES,
   TRAIL_COLORS,
   N,

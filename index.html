@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tracer — Daily Maze</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Pacifico:wght@400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=26">
+  <link rel="icon" href="assets/favicon.ico">
+  <link rel="stylesheet" href="styles.css?v=30">
 </head>
 <body>
   <div id="app">
@@ -16,6 +14,7 @@
       <h1 class="logo">Tracer</h1>
       <p class="tagline">Six mazes. One clock.</p>
       <button id="btn-start" class="btn-primary">Start Today's Run</button>
+      <button id="btn-practice" class="btn-secondary">Practice</button>
       <p class="hint">Arrow keys, WASD, or click and drag · New mazes daily</p>
       <p id="revision" class="revision"></p>
     </section>
@@ -26,6 +25,7 @@
         <span class="logo-small">Tracer</span>
         <span id="maze-label">Maze 1 / 6</span>
         <span id="timer">0:00.00</span>
+        <button id="btn-exit-practice" class="btn-exit-practice hidden">Exit</button>
       </header>
       <div id="countdown-overlay" class="countdown-overlay hidden">
         <span id="countdown-number">3</span>
@@ -66,10 +66,10 @@
   </div>
 
   <footer class="site-footer">
-    <img src="assets/SwansonLogo_Swan250_v2.png" alt="Patrick Swanson" class="footer-logo">
+    <img src="assets/swan_logo.png" alt="Patrick Swanson" class="footer-logo">
     <span>© 2026 Patrick Swanson</span>
   </footer>
 
-  <script type="module" src="app.js?v=26"></script>
+  <script type="module" src="app.js?v=30"></script>
 </body>
 </html>

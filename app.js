@@ -2,12 +2,12 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, TRAIL_COLORS } from './maze.js?v=26';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=26';
-import { createInputHandler } from './input.js?v=26';
-import { createGame, formatTime } from './game.js?v=26';
-import { saveRun, loadRun } from './storage.js?v=26';
-const REVISION = 26; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS } from './maze.js?v=30';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=30';
+import { createInputHandler } from './input.js?v=30';
+import { createGame, formatTime } from './game.js?v=30';
+import { saveRun, loadRun } from './storage.js?v=30';
+const REVISION = 30; // Bump when making changes so you know you're on a new version
 
 // DOM
 const landing = document.getElementById('landing');
@@ -27,6 +27,8 @@ const recapPanels = document.getElementById('recap-panels');
 const splitsList = document.getElementById('splits-list');
 const btnCopy = document.getElementById('btn-copy');
 const btnHome = document.getElementById('btn-home');
+const btnPractice = document.getElementById('btn-practice');
+const btnExitPractice = document.getElementById('btn-exit-practice');
 const revisionEl = document.getElementById('revision');
 const recapExpandOverlay = document.getElementById('recap-expand-overlay');
 const recapExpandCanvas = document.getElementById('recap-expand-canvas');
@@ -55,6 +57,10 @@ let lastMazeIndex = -1;
 let lastFrameTime = 0;
 let countdownActive = false;
 
+let practiceActive = false;
+let practiceMazeCount = 0;
+let practiceSeedBase = 0;
+
 function showScreen(id) {
   landing.classList.remove('active');
   gameplay.classList.remove('active');
@@ -64,6 +70,8 @@ function showScreen(id) {
 
 function runCountdown() {
   showScreen('gameplay');
+  const ctx = mazeCanvas.getContext('2d');
+  ctx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
   countdownActive = true;
   countdownOverlay.classList.remove('hidden');
   let n = 3;
@@ -126,7 +134,8 @@ function tickTween(state, now) {
   playerVisualPos[1] = tweenFrom[1] + (tweenTo[1] - tweenFrom[1]) * t;
 
   const ctx = mazeCanvas.getContext('2d');
-  const color = TRAIL_COLORS[state.mazeIndex];
+  const colorIndex = practiceActive ? practiceMazeCount % TRAIL_COLORS.length : state.mazeIndex;
+  const color = TRAIL_COLORS[colorIndex];
   renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx);
 }
 
@@ -155,9 +164,13 @@ function stopGameLoop() {
 }
 
 function updateUI(state) {
-  mazeLabel.textContent = `Maze ${state.mazeIndex + 1} / ${mazes.length}`;
+  if (practiceActive) {
+    mazeLabel.textContent = `Practice · Maze ${practiceMazeCount + 1}`;
+  } else {
+    mazeLabel.textContent = `Maze ${state.mazeIndex + 1} / ${mazes.length}`;
+  }
   timerEl.textContent = formatTime(state.totalMs);
-  if (state.splits.length > 0) {
+  if (!practiceActive && state.splits.length > 0) {
     splitsFooter.textContent = state.splits.map((ms, i) => `Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`).join(' · ');
   }
 }
@@ -246,6 +259,44 @@ function copyResult() {
       btnCopy.disabled = false;
     }, 2000);
   }).catch(() => {});
+}
+
+function launchPracticeMaze(autoStart = false) {
+  game?.stop();
+  const size = MAZE_SIZES[practiceMazeCount % MAZE_SIZES.length];
+  const rng = mulberry32(practiceSeedBase + practiceMazeCount * 1337);
+  mazes = [generateMaze(size, rng)];
+  lastMazeIndex = -1;
+
+  game = createGame(mazes, {
+    onStateChange(state) {
+      if (state.mazeIndex !== lastMazeIndex) {
+        lastMazeIndex = state.mazeIndex;
+        const startX = state.playerPos[0] + 0.5;
+        const startY = state.playerPos[1] + 0.5;
+        playerVisualPos = [startX, startY];
+        tweenFrom = [startX, startY];
+        tweenTo = [startX, startY];
+        tweenElapsed = TWEEN_DURATION;
+        pendingPos = null;
+        lastKnownPos = [state.playerPos[0], state.playerPos[1]];
+        lastFrameTime = 0;
+        inputHandler.reset?.();
+      }
+      updateUI(state);
+    },
+    onMazeComplete(_index, splitMs) {
+      showMazeClear(splitMs);
+    },
+    onRunComplete() {
+      setTimeout(() => {
+        practiceMazeCount++;
+        launchPracticeMaze(true);
+      }, 800);
+    },
+  });
+
+  if (autoStart) game.startRun();
 }
 
 function init() {
@@ -378,6 +429,34 @@ function init() {
   btnCopy.addEventListener('click', copyResult);
   btnHome.addEventListener('click', () => {
     if (loadRun(dailySeed)) btnStart.textContent = 'View Results';
+    showScreen('landing');
+  });
+
+  btnPractice.addEventListener('click', () => {
+    practiceActive = true;
+    practiceMazeCount = 0;
+    practiceSeedBase = Math.floor(Math.random() * 0x7FFFFFFF);
+    splitsFooter.textContent = '';
+    mazeLabel.textContent = 'Practice · Maze 1';
+    timerEl.textContent = '0:00.00';
+    btnExitPractice.classList.remove('hidden');
+    launchPracticeMaze(false);
+    inputHandler.bind();
+    pointerHandler.bind();
+    showScreen('gameplay');
+    const ctx = mazeCanvas.getContext('2d');
+    ctx.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
+    game.startRun();
+    startGameLoop();
+  });
+
+  btnExitPractice.addEventListener('click', () => {
+    practiceActive = false;
+    btnExitPractice.classList.add('hidden');
+    game?.stop();
+    inputHandler.unbind();
+    stopGameLoop();
+    pointerHandler.unbind();
     showScreen('landing');
   });
 
