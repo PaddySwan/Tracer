@@ -2,12 +2,12 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS } from './maze.js?v=30';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=30';
-import { createInputHandler } from './input.js?v=30';
-import { createGame, formatTime } from './game.js?v=30';
-import { saveRun, loadRun } from './storage.js?v=30';
-const REVISION = 30; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=33';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=33';
+import { createInputHandler } from './input.js?v=33';
+import { createGame, formatTime } from './game.js?v=33';
+import { saveRun, loadRun } from './storage.js?v=33';
+const REVISION = 33; // Bump when making changes so you know you're on a new version
 
 // DOM
 const landing = document.getElementById('landing');
@@ -36,6 +36,7 @@ const recapExpandTitle = document.getElementById('recap-expand-title');
 const recapExpandSplit = document.getElementById('recap-expand-split');
 
 let dailySeed;
+let dailyMazes;
 let mazes;
 let game;
 let inputHandler;
@@ -214,7 +215,7 @@ function buildResultsScreen() {
   });
 
   splitsList.innerHTML = completedSplits
-    .map((ms, i) => `Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`)
+    .map((ms, i) => `${TRAIL_EMOJIS[i]} Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`)
     .join('<br>');
 }
 
@@ -246,7 +247,7 @@ function copyResult() {
   const lines = [
     `Tracer #${dayNum}`,
     '',
-    ...completedSplits.map((ms, i) => `Maze ${i + 1}: ${formatTime(ms)}`),
+    ...completedSplits.map((ms, i) => `${TRAIL_EMOJIS[i]} Maze ${i + 1}: ${formatTime(ms)}`),
     '',
     `Total: ${formatTime(runTotalMs)}`,
   ];
@@ -302,42 +303,50 @@ function launchPracticeMaze(autoStart = false) {
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
   dailySeed = getDailySeed();
-  mazes = generateDailyMazes(dailySeed);
+  dailyMazes = generateDailyMazes(dailySeed);
   completedTrails = [];
   completedSplits = [];
 
-  game = createGame(mazes, {
-    onStateChange(state) {
-      if (state.mazeIndex !== lastMazeIndex) {
-        lastMazeIndex = state.mazeIndex;
-        const startX = state.playerPos[0] + 0.5;
-        const startY = state.playerPos[1] + 0.5;
-        playerVisualPos = [startX, startY];
-        tweenFrom = [startX, startY];
-        tweenTo = [startX, startY];
-        tweenElapsed = TWEEN_DURATION;
-        pendingPos = null;
-        lastKnownPos = [state.playerPos[0], state.playerPos[1]];
-        lastFrameTime = 0;
-        inputHandler.reset?.();
-      }
-      updateUI(state);
-    },
-    onMazeComplete(index, splitMs, trail) {
-      completedTrails[index] = trail;
-      completedSplits[index] = splitMs;
-      showMazeClear(splitMs);
-    },
-    onRunComplete(splits, totalMs) {
-      runTotalMs = totalMs;
-      saveRun(dailySeed, { splits, totalMs, trails: completedTrails });
-      inputHandler.unbind();
-      stopGameLoop();
-      pointerHandler.unbind();
-      buildResultsScreen();
-      showScreen('results');
-    },
-  });
+  function setupDailyGame() {
+    game?.stop();
+    mazes = dailyMazes;
+    completedTrails = [];
+    completedSplits = [];
+    game = createGame(dailyMazes, {
+      onStateChange(state) {
+        if (state.mazeIndex !== lastMazeIndex) {
+          lastMazeIndex = state.mazeIndex;
+          const startX = state.playerPos[0] + 0.5;
+          const startY = state.playerPos[1] + 0.5;
+          playerVisualPos = [startX, startY];
+          tweenFrom = [startX, startY];
+          tweenTo = [startX, startY];
+          tweenElapsed = TWEEN_DURATION;
+          pendingPos = null;
+          lastKnownPos = [state.playerPos[0], state.playerPos[1]];
+          lastFrameTime = 0;
+          inputHandler.reset?.();
+        }
+        updateUI(state);
+      },
+      onMazeComplete(index, splitMs, trail) {
+        completedTrails[index] = trail;
+        completedSplits[index] = splitMs;
+        showMazeClear(splitMs);
+      },
+      onRunComplete(splits, totalMs) {
+        runTotalMs = totalMs;
+        saveRun(dailySeed, { splits, totalMs, trails: completedTrails });
+        inputHandler.unbind();
+        stopGameLoop();
+        pointerHandler.unbind();
+        buildResultsScreen();
+        showScreen('results');
+      },
+    });
+  }
+
+  setupDailyGame();
 
   inputHandler = createInputHandler((dir) => {
     if (countdownActive) return;
@@ -416,10 +425,16 @@ function init() {
 
   btnStart.addEventListener('click', () => {
     if (loadRun(dailySeed)) {
+      const saved = loadRun(dailySeed);
+      mazes = dailyMazes;
+      completedTrails = saved.trails;
+      completedSplits = saved.splits;
+      runTotalMs = saved.totalMs;
       buildResultsScreen();
       showScreen('results');
       return;
     }
+    setupDailyGame();
     inputHandler.bind();
     pointerHandler.bind();
     lastMazeIndex = -1;

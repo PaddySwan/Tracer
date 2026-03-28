@@ -5,6 +5,7 @@
 
 const MAZE_SIZES = [7, 8, 9, 10, 11, 12]; // 6 mazes; small and quick
 const TRAIL_COLORS = ['#1D4DFF', '#FF2A1A', '#F4F000', '#FFAA00', '#00A62E', '#B84DFF'];
+const TRAIL_EMOJIS = ['🔵', '🔴', '🟡', '🟠', '🟢', '🟣'];
 
 // Seeded PRNG (mulberry32)
 function mulberry32(seed) {
@@ -207,6 +208,7 @@ export {
   mulberry32,
   MAZE_SIZES,
   TRAIL_COLORS,
+  TRAIL_EMOJIS,
   N,
   E,
   S,
