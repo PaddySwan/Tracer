@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracer — Daily Maze</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Pacifico:wght@400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Landing Screen -->
+    <section id="landing" class="screen active">
+      <h1 class="logo">Tracer</h1>
+      <p class="tagline">Six mazes. One clock.</p>
+      <button id="btn-start" class="btn-primary">Start Today's Run</button>
+      <p class="hint">Arrow keys, WASD, or click and drag · New puzzle daily</p>
+      <p id="revision" class="revision"></p>
+    </section>
+
+    <!-- Gameplay Screen -->
+    <section id="gameplay" class="screen">
+      <header class="game-header">
+        <span class="logo-small">Tracer</span>
+        <span id="maze-label">Maze 1 / 6</span>
+        <span id="timer">0:00.00</span>
+      </header>
+      <div id="countdown-overlay" class="countdown-overlay hidden">
+        <span id="countdown-number">3</span>
+      </div>
+      <div id="maze-container">
+        <canvas id="maze-canvas"></canvas>
+      </div>
+      <div id="maze-clear-overlay" class="maze-clear-overlay hidden">
+        <span class="maze-clear-text">Maze Clear</span>
+        <span id="split-time" class="split-time"></span>
+      </div>
+      <footer id="splits-footer" class="splits-footer"></footer>
+    </section>
+
+    <!-- Results Screen -->
+    <section id="results" class="screen">
+      <h1 class="results-title">Run Complete</h1>
+      <p id="total-time" class="total-time">Total — 0:00.00</p>
+      <div id="recap-panels" class="recap-panels"></div>
+      <div id="splits-list" class="splits-list"></div>
+      <div class="results-actions">
+        <button id="btn-copy" class="btn-secondary">Copy Result</button>
+      </div>
+    </section>
+
+    <!-- Recap expand overlay (results screen) -->
+    <div id="recap-expand-overlay" class="recap-expand-overlay hidden" aria-hidden="true">
+      <div class="recap-expand-content">
+        <div class="recap-expand-header">
+          <span id="recap-expand-title">Maze 1</span>
+          <span id="recap-expand-split" class="recap-expand-split"></span>
+          <button type="button" class="recap-expand-close" aria-label="Close">×</button>
+        </div>
+        <canvas id="recap-expand-canvas"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>
