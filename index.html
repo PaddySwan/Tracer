@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Pacifico:wght@400&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
   <div id="app">
@@ -16,7 +16,7 @@
       <h1 class="logo">Tracer</h1>
       <p class="tagline">Six mazes. One clock.</p>
       <button id="btn-start" class="btn-primary">Start Today's Run</button>
-      <p class="hint">Arrow keys, WASD, or click and drag · New puzzle daily</p>
+      <p class="hint">Arrow keys, WASD, or click and drag · New mazes daily</p>
       <p id="revision" class="revision"></p>
     </section>
 
@@ -48,6 +48,7 @@
       <div id="splits-list" class="splits-list"></div>
       <div class="results-actions">
         <button id="btn-copy" class="btn-secondary">Copy Result</button>
+        <button id="btn-home" class="btn-secondary">Home</button>
       </div>
     </section>
 
@@ -64,6 +65,11 @@
     </div>
   </div>
 
-  <script type="module" src="app.js"></script>
+  <footer class="site-footer">
+    <img src="assets/SwansonLogo_Swan250_v2.png" alt="Patrick Swanson" class="footer-logo">
+    <span>© 2026 Patrick Swanson</span>
+  </footer>
+
+  <script type="module" src="app.js?v=26"></script>
 </body>
 </html>

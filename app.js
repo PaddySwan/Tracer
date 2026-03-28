@@ -2,11 +2,12 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, TRAIL_COLORS } from './maze.js';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js';
-import { createInputHandler } from './input.js';
-import { createGame, formatTime } from './game.js';
-const REVISION = 19; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, TRAIL_COLORS } from './maze.js?v=26';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=26';
+import { createInputHandler } from './input.js?v=26';
+import { createGame, formatTime } from './game.js?v=26';
+import { saveRun, loadRun } from './storage.js?v=26';
+const REVISION = 26; // Bump when making changes so you know you're on a new version
 
 // DOM
 const landing = document.getElementById('landing');
@@ -25,6 +26,7 @@ const totalTimeEl = document.getElementById('total-time');
 const recapPanels = document.getElementById('recap-panels');
 const splitsList = document.getElementById('splits-list');
 const btnCopy = document.getElementById('btn-copy');
+const btnHome = document.getElementById('btn-home');
 const revisionEl = document.getElementById('revision');
 const recapExpandOverlay = document.getElementById('recap-expand-overlay');
 const recapExpandCanvas = document.getElementById('recap-expand-canvas');
@@ -39,9 +41,15 @@ let completedTrails = [];
 let completedSplits = [];
 let runTotalMs = 0;
 
-const SMOOTH_MS = 5;
-const SNAP_DIST = 0.5; // snap to cell if more than this far behind (avoids lag when moving fast)
+const TWEEN_DURATION = 65; // ms per cell; matches hold-repeat interval for a smooth glide
+function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+
 let playerVisualPos = [0.5, 0.5];
+let tweenFrom = [0.5, 0.5];
+let tweenTo = [0.5, 0.5];
+let tweenElapsed = TWEEN_DURATION;
+let pendingPos = null;
+let lastKnownPos = null;
 let rafId = null;
 let lastMazeIndex = -1;
 let lastFrameTime = 0;
@@ -78,46 +86,45 @@ function runCountdown() {
   setTimeout(step, 1000);
 }
 
-function resizeAndRender(state) {
+function tickTween(state, now) {
   if (!state.maze) return;
   const { width, height, cellPx } = getCanvasSize(state.maze.size);
   if (mazeCanvas.width !== width || mazeCanvas.height !== height) {
     mazeCanvas.width = width;
     mazeCanvas.height = height;
   }
-  const targetX = state.playerPos[0] + 0.5;
-  const targetY = state.playerPos[1] + 0.5;
-  const ctx = mazeCanvas.getContext('2d');
-  const color = TRAIL_COLORS[state.mazeIndex];
-  renderMaze(ctx, state.maze, state.trail, [targetX, targetY], color, cellPx);
-}
 
-function tickSmooth(state, now) {
-  if (!state.maze) return;
-  const { width, height, cellPx } = getCanvasSize(state.maze.size);
-  if (mazeCanvas.width !== width || mazeCanvas.height !== height) {
-    mazeCanvas.width = width;
-    mazeCanvas.height = height;
-  }
-  const targetX = state.playerPos[0] + 0.5;
-  const targetY = state.playerPos[1] + 0.5;
-  const dx = targetX - playerVisualPos[0];
-  const dy = targetY - playerVisualPos[1];
-  const dist = Math.sqrt(dx * dx + dy * dy);
-  if (dist > SNAP_DIST) {
-    playerVisualPos[0] = targetX;
-    playerVisualPos[1] = targetY;
-  } else if (Math.abs(dx) > 0.02 || Math.abs(dy) > 0.02) {
-    const deltaMs = lastFrameTime > 0 ? now - lastFrameTime : 16;
-    lastFrameTime = now;
-    const step = Math.min(1, deltaMs / SMOOTH_MS);
-    playerVisualPos[0] += dx * step;
-    playerVisualPos[1] += dy * step;
-  } else {
-    playerVisualPos[0] = targetX;
-    playerVisualPos[1] = targetY;
-  }
+  const deltaMs = lastFrameTime > 0 ? now - lastFrameTime : 16;
   lastFrameTime = now;
+
+  // Detect player position change and queue a tween
+  const [px, py] = state.playerPos;
+  if (!lastKnownPos || lastKnownPos[0] !== px || lastKnownPos[1] !== py) {
+    lastKnownPos = [px, py];
+    const target = [px + 0.5, py + 0.5];
+    if (tweenElapsed < TWEEN_DURATION) {
+      pendingPos = target; // overwrite any previously queued move
+    } else {
+      tweenFrom = [...tweenTo];
+      tweenTo = target;
+      tweenElapsed = 0;
+    }
+  }
+
+  // Advance active tween; when it finishes, start any queued move
+  if (tweenElapsed < TWEEN_DURATION) {
+    tweenElapsed = Math.min(TWEEN_DURATION, tweenElapsed + deltaMs);
+  } else if (pendingPos) {
+    tweenFrom = [...tweenTo];
+    tweenTo = pendingPos;
+    pendingPos = null;
+    tweenElapsed = Math.min(TWEEN_DURATION, deltaMs);
+  }
+
+  const t = easeInOut(tweenElapsed / TWEEN_DURATION);
+  playerVisualPos[0] = tweenFrom[0] + (tweenTo[0] - tweenFrom[0]) * t;
+  playerVisualPos[1] = tweenFrom[1] + (tweenTo[1] - tweenFrom[1]) * t;
+
   const ctx = mazeCanvas.getContext('2d');
   const color = TRAIL_COLORS[state.mazeIndex];
   renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx);
@@ -130,8 +137,7 @@ function gameLoop(now) {
     rafId = requestAnimationFrame(gameLoop);
     return;
   }
-  inputHandler.tick(now);
-  tickSmooth(state, now);
+  tickTween(state, now);
   updateUI(state);
   rafId = requestAnimationFrame(gameLoop);
 }
@@ -253,8 +259,14 @@ function init() {
     onStateChange(state) {
       if (state.mazeIndex !== lastMazeIndex) {
         lastMazeIndex = state.mazeIndex;
-        playerVisualPos[0] = state.playerPos[0] + 0.5;
-        playerVisualPos[1] = state.playerPos[1] + 0.5;
+        const startX = state.playerPos[0] + 0.5;
+        const startY = state.playerPos[1] + 0.5;
+        playerVisualPos = [startX, startY];
+        tweenFrom = [startX, startY];
+        tweenTo = [startX, startY];
+        tweenElapsed = TWEEN_DURATION;
+        pendingPos = null;
+        lastKnownPos = [state.playerPos[0], state.playerPos[1]];
         lastFrameTime = 0;
         inputHandler.reset?.();
       }
@@ -267,6 +279,7 @@ function init() {
     },
     onRunComplete(splits, totalMs) {
       runTotalMs = totalMs;
+      saveRun(dailySeed, { splits, totalMs, trails: completedTrails });
       inputHandler.unbind();
       stopGameLoop();
       pointerHandler.unbind();
@@ -342,7 +355,20 @@ function init() {
     },
   };
 
+  const savedRun = loadRun(dailySeed);
+  if (savedRun) {
+    completedTrails = savedRun.trails;
+    completedSplits = savedRun.splits;
+    runTotalMs = savedRun.totalMs;
+    btnStart.textContent = 'View Results';
+  }
+
   btnStart.addEventListener('click', () => {
+    if (loadRun(dailySeed)) {
+      buildResultsScreen();
+      showScreen('results');
+      return;
+    }
     inputHandler.bind();
     pointerHandler.bind();
     lastMazeIndex = -1;
@@ -350,6 +376,10 @@ function init() {
   });
 
   btnCopy.addEventListener('click', copyResult);
+  btnHome.addEventListener('click', () => {
+    if (loadRun(dailySeed)) btnStart.textContent = 'View Results';
+    showScreen('landing');
+  });
 
   recapExpandOverlay.addEventListener('click', (e) => {
     if (e.target === recapExpandOverlay || e.target.closest('.recap-expand-close')) hideRecapExpand();

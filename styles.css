@@ -374,3 +374,28 @@ html, body {
 .hidden {
   display: none !important;
 }
+
+/* Site footer */
+.site-footer {
+  position: fixed;
+  bottom: 1rem;
+  right: 1.25rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.site-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.footer-logo {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+  opacity: 0.7;
+}

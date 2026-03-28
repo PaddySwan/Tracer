@@ -15,7 +15,7 @@ const KEY_TO_DIR = {
 };
 
 const INITIAL_DELAY_MS = 120; // hold this long before repeat starts
-const REPEAT_MS = 28;         // then one move per this interval (faster = less laggy feel)
+const REPEAT_MS = 65;         // matches tween duration so each repeat fires as the animation finishes
 
 /**
  * First keypress always moves once. If key is held, after INITIAL_DELAY_MS
@@ -81,13 +81,12 @@ function createInputHandler(onMove) {
     clearTimers();
   }
 
-  function tick() {}
   function reset() {
     currentDir = null;
     clearTimers();
   }
 
-  return { bind, unbind, tick, reset };
+  return { bind, unbind, reset };
 }
 
 export { createInputHandler, KEY_TO_DIR };

@@ -134,22 +134,68 @@ function generateMaze(size, random) {
     }
   }
 
-  const start = [0, 0];
-  const end = [size - 1, size - 1];
+  const cornerPairs = [
+    [[0, 0], [size - 1, size - 1]],
+    [[size - 1, size - 1], [0, 0]],
+    [[size - 1, 0], [0, size - 1]],
+    [[0, size - 1], [size - 1, 0]],
+  ];
+  const [start, end] = cornerPairs[Math.floor(random() * 4)];
   return { grid, size, start, end };
 }
 
 /**
+ * BFS shortest path length from start to end. Returns cell count.
+ */
+function shortestPath(maze) {
+  const { grid, size, start, end } = maze;
+  const visited = new Uint8Array(size * size);
+  const key = (x, y) => y * size + x;
+  const queue = [[start[0], start[1], 0]];
+  visited[key(start[0], start[1])] = 1;
+  const dirs = [N, E, S, W];
+  while (queue.length > 0) {
+    const [x, y, dist] = queue.shift();
+    if (x === end[0] && y === end[1]) return dist;
+    for (const wall of dirs) {
+      if (grid[y][x] & wall) continue;
+      const nx = x + DX[wall];
+      const ny = y + DY[wall];
+      const k = key(nx, ny);
+      if (!visited[k]) {
+        visited[k] = 1;
+        queue.push([nx, ny, dist + 1]);
+      }
+    }
+  }
+  return 0;
+}
+
+/**
  * Generate all 6 daily mazes from seed (YYYY-MM-DD).
- * Returns array of maze objects: { grid, size, start, end }.
+ * Each maze is retried up to 10 times if the shortest path is too short;
+ * falls back to the best attempt if none pass.
  */
 function generateDailyMazes(seed) {
   const seedNum = hashString(seed);
   const mazes = [];
   for (let i = 0; i < 6; i++) {
-    const rng = mulberry32(seedNum + i * 1000);
     const size = MAZE_SIZES[i];
-    mazes.push(generateMaze(size, rng));
+    const minPath = size * 2; // must traverse at least 2× the grid size
+    const MAX_ATTEMPTS = 10;
+    let best = null;
+    let bestLen = 0;
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      const rng = mulberry32(seedNum + i * 1000 + attempt * 7);
+      const maze = generateMaze(size, rng);
+      const len = shortestPath(maze);
+      if (len > bestLen) {
+        bestLen = len;
+        best = maze;
+      }
+      if (len >= minPath) break;
+    }
+    mazes.push(best);
   }
   return mazes;
 }

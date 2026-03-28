@@ -9,7 +9,6 @@ const GRID_COLOR = 'rgba(78, 78, 78, 0.4)';
 const WALL_COLOR = '#6E6E6E';
 const WALL_LINE_WIDTH = 2;
 const NODE_RADIUS = 0.35; // in cell units (start)
-const END_NODE_RADIUS = 0.48; // larger, distinct
 const TRAIL_WIDTH = 0.35;
 const PLAYER_RADIUS = 0.25;
 const TRAIL_FADE_NEAR = 1;
@@ -84,7 +83,20 @@ function drawWalls(ctx, grid, size, cellPx) {
 }
 
 /**
- * Draw start and end nodes. Start = small filled circle. End = large distinct goal.
+ * Draw a 5-pointed star centered at (cx, cy).
+ */
+function drawStar(ctx, cx, cy, outerR, innerR) {
+  ctx.beginPath();
+  for (let i = 0; i < 10; i++) {
+    const angle = (i * Math.PI) / 5 - Math.PI / 2;
+    const r = i % 2 === 0 ? outerR : innerR;
+    ctx.lineTo(cx + r * Math.cos(angle), cy + r * Math.sin(angle));
+  }
+  ctx.closePath();
+}
+
+/**
+ * Draw start and end nodes. Start = small filled circle. End = star.
  */
 function drawNodes(ctx, start, end, size, cellPx, trailColor) {
   const startR = cellPx * NODE_RADIUS;
@@ -100,18 +112,11 @@ function drawNodes(ctx, start, end, size, cellPx, trailColor) {
 
   const endPx = (end[0] + 0.5) * cellPx;
   const endPy = (end[1] + 0.5) * cellPx;
-  const endR = cellPx * END_NODE_RADIUS;
-  ctx.beginPath();
-  ctx.arc(endPx, endPy, endR, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(10, 10, 10, 0.85)';
+  drawStar(ctx, endPx, endPy, cellPx * 0.38, cellPx * 0.16);
+  ctx.fillStyle = trailColor;
   ctx.fill();
   ctx.strokeStyle = '#F5F5F5';
-  ctx.lineWidth = Math.max(3, cellPx * 0.15);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(endPx, endPy, endR * 0.5, 0, Math.PI * 2);
-  ctx.strokeStyle = trailColor;
-  ctx.lineWidth = 2;
+  ctx.lineWidth = Math.max(1.5, cellPx * 0.08);
   ctx.stroke();
 }
 

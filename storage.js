@@ -1,28 +1,24 @@
 /**
- * Tracer — localStorage persistence for best time per day.
+ * Tracer — persist today's completed run (splits, totalMs, trails) in localStorage.
  */
 
-const KEY_PREFIX = 'tracer_best_';
-
-function getBestTimeKey(seed) {
-  return KEY_PREFIX + seed;
+function getRunKey(seed) {
+  return 'tracer_run_' + seed;
 }
 
-function getBestTime(seed) {
+function saveRun(seed, { splits, totalMs, trails }) {
   try {
-    const raw = localStorage.getItem(getBestTimeKey(seed));
-    if (raw == null) return null;
-    const ms = parseInt(raw, 10);
-    return isNaN(ms) ? null : ms;
+    localStorage.setItem(getRunKey(seed), JSON.stringify({ splits, totalMs, trails }));
+  } catch (_) {}
+}
+
+function loadRun(seed) {
+  try {
+    const raw = localStorage.getItem(getRunKey(seed));
+    return raw ? JSON.parse(raw) : null;
   } catch (_) {
     return null;
   }
 }
 
-function setBestTime(seed, totalMs) {
-  try {
-    localStorage.setItem(getBestTimeKey(seed), String(totalMs));
-  } catch (_) {}
-}
-
-export { getBestTime, setBestTime };
+export { saveRun, loadRun };
