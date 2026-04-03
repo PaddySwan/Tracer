@@ -64,3 +64,4 @@ Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a
 | 30 | Self-hosted fonts and favicon |
 | 33 | Emoji trail colors in results and copy text |
 | 34 | Daily number shown on home and results screens |
+| 35 | Copy Image: copies a 1080×1080 PNG to the clipboard — paste directly into any app to share |

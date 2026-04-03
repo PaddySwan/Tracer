@@ -2,12 +2,12 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=34';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=34';
-import { createInputHandler } from './input.js?v=34';
-import { createGame, formatTime } from './game.js?v=34';
-import { saveRun, loadRun } from './storage.js?v=34';
-const REVISION = 34; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=35';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=35';
+import { createInputHandler } from './input.js?v=35';
+import { createGame, formatTime } from './game.js?v=35';
+import { saveRun, loadRun } from './storage.js?v=35';
+const REVISION = 35; // Bump when making changes so you know you're on a new version
 const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
 
 // DOM
@@ -27,6 +27,7 @@ const totalTimeEl = document.getElementById('total-time');
 const recapPanels = document.getElementById('recap-panels');
 const splitsList = document.getElementById('splits-list');
 const btnCopy = document.getElementById('btn-copy');
+const btnShare = document.getElementById('btn-share');
 const btnHome = document.getElementById('btn-home');
 const btnPractice = document.getElementById('btn-practice');
 const btnExitPractice = document.getElementById('btn-exit-practice');
@@ -262,6 +263,95 @@ function copyResult() {
   }).catch(() => {});
 }
 
+async function shareImage() {
+  await document.fonts.ready;
+
+  const W = 1080;
+  const H = 1080;
+  const canvas = document.createElement('canvas');
+  canvas.width = W;
+  canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  // Background
+  ctx.fillStyle = '#0A0A0A';
+  ctx.fillRect(0, 0, W, H);
+
+  // Logo
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F5F5F5';
+  ctx.font = '72px Pacifico';
+  ctx.fillText('Tracer', W / 2, 100);
+
+  // Day number
+  ctx.fillStyle = '#B8B8B8';
+  ctx.font = '500 28px Inter';
+  ctx.fillText(`#${DAY_NUM}`, W / 2, 144);
+
+  // Maze grid: 3 cols × 2 rows
+  const mazePx = 300;
+  const colGap = 24;
+  const rowGap = 30;
+  const labelH = 36;
+  const cols = 3;
+  const totalGridW = cols * mazePx + (cols - 1) * colGap;
+  const marginX = (W - totalGridW) / 2;
+  const startY = 196;
+
+  for (let i = 0; i < mazes.length; i++) {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = marginX + col * (mazePx + colGap);
+    const y = startY + row * (mazePx + labelH + rowGap);
+
+    // Render maze into a temp canvas (renderRecapPanel calls clearRect, so we fill bg first)
+    const mc = document.createElement('canvas');
+    mc.width = mazePx;
+    mc.height = mazePx;
+    const mctx = mc.getContext('2d');
+    mctx.fillStyle = '#0A0A0A';
+    mctx.fillRect(0, 0, mazePx, mazePx);
+    renderRecapPanel(mctx, mazes[i], completedTrails[i] || [], TRAIL_COLORS[i], mazePx);
+    ctx.drawImage(mc, x, y);
+
+    // Split label
+    const split = completedSplits[i] != null ? (completedSplits[i] / 1000).toFixed(2) + 's' : '—';
+    ctx.fillStyle = '#B8B8B8';
+    ctx.font = '500 22px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${TRAIL_EMOJIS[i]} ${split}`, x + mazePx / 2, y + mazePx + 26);
+  }
+
+  // Total time
+  const rowH = mazePx + labelH + rowGap;
+  const totalLineY = startY + 2 * rowH - rowGap + 50;
+  ctx.fillStyle = '#F5F5F5';
+  ctx.font = '600 34px Inter';
+  ctx.textAlign = 'center';
+  ctx.fillText(`Total  ${formatTime(runTotalMs)}`, W / 2, totalLineY);
+
+  // Copy image to clipboard
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+  try {
+    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+    const label = btnShare.textContent;
+    btnShare.textContent = 'Copied!';
+    btnShare.disabled = true;
+    setTimeout(() => {
+      btnShare.textContent = label;
+      btnShare.disabled = false;
+    }, 2000);
+  } catch (e) {
+    // Fallback: download if clipboard write is denied
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tracer-${DAY_NUM}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+}
+
 function launchPracticeMaze(autoStart = false) {
   game?.stop();
   const size = MAZE_SIZES[practiceMazeCount % MAZE_SIZES.length];
@@ -444,6 +534,7 @@ function init() {
   });
 
   btnCopy.addEventListener('click', copyResult);
+  btnShare.addEventListener('click', shareImage);
   btnHome.addEventListener('click', () => {
     if (loadRun(dailySeed)) btnStart.textContent = 'View Results';
     showScreen('landing');
