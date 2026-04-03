@@ -65,4 +65,5 @@ Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a
 | 33 | Emoji trail colors in results and copy text |
 | 34 | Daily number shown on home and results screens |
 | 35 | Copy Image: copies a 1080×1080 PNG to the clipboard — paste directly into any app to share |
-| 36 | Holiday theming: trail colors and emojis change on 8 major holidays |
+| 36 | Holiday theming: trail colors, wall colors, UI accent, and greeting message on 8 major holidays |
+| 38 | Sound effects: move tick, maze clear chime, run complete fanfare — off by default with a mute toggle |

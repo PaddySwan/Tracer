@@ -2,12 +2,13 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=37';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=37';
-import { createInputHandler } from './input.js?v=37';
-import { createGame, formatTime } from './game.js?v=37';
-import { saveRun, loadRun } from './storage.js?v=37';
-const REVISION = 37; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=38';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=38';
+import { createInputHandler } from './input.js?v=38';
+import { createGame, formatTime } from './game.js?v=38';
+import { saveRun, loadRun } from './storage.js?v=38';
+import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=38';
+const REVISION = 38; // Bump when making changes so you know you're on a new version
 const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
 const HOLIDAY = getHoliday(new Date());
 const activeColors = HOLIDAY ? HOLIDAY.trailColors : TRAIL_COLORS;
@@ -35,6 +36,7 @@ const btnShare = document.getElementById('btn-share');
 const btnHome = document.getElementById('btn-home');
 const btnPractice = document.getElementById('btn-practice');
 const btnExitPractice = document.getElementById('btn-exit-practice');
+const btnMute = document.getElementById('btn-mute');
 const revisionEl = document.getElementById('revision');
 const recapExpandOverlay = document.getElementById('recap-expand-overlay');
 const recapExpandCanvas = document.getElementById('recap-expand-canvas');
@@ -382,6 +384,7 @@ function launchPracticeMaze(autoStart = false) {
     },
     onMazeComplete(_index, splitMs) {
       showMazeClear(splitMs);
+      playMazeClear();
     },
     onRunComplete() {
       setTimeout(() => {
@@ -396,6 +399,11 @@ function launchPracticeMaze(autoStart = false) {
 
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
+  btnMute.textContent = isMuted() ? '🔇' : '🔊';
+  btnMute.addEventListener('click', () => {
+    setMuted(!isMuted());
+    btnMute.textContent = isMuted() ? '🔇' : '🔊';
+  });
   document.getElementById('day-number').textContent = `Tracer #${DAY_NUM}`;
   document.getElementById('results-day-number').textContent = `Tracer #${DAY_NUM}`;
   if (HOLIDAY) {
@@ -436,8 +444,10 @@ function init() {
         completedTrails[index] = trail;
         completedSplits[index] = splitMs;
         showMazeClear(splitMs);
+        playMazeClear();
       },
       onRunComplete(splits, totalMs) {
+        playRunComplete();
         runTotalMs = totalMs;
         saveRun(dailySeed, { splits, totalMs, trails: completedTrails });
         inputHandler.unbind();
@@ -451,9 +461,18 @@ function init() {
 
   setupDailyGame();
 
+  function getMoveProximity() {
+    const s = game.getState();
+    if (!s.maze) return 0;
+    const [px, py] = s.playerPos;
+    const [ex, ey] = s.maze.end;
+    const dist = Math.abs(px - ex) + Math.abs(py - ey);
+    return 1 - dist / ((s.maze.size - 1) * 2);
+  }
+
   inputHandler = createInputHandler((dir) => {
     if (countdownActive) return;
-    game.tryMove(dir);
+    if (game.tryMove(dir)) playMove(getMoveProximity());
   });
 
   function getCellFromEvent(e) {
@@ -483,6 +502,7 @@ function init() {
         const cell = getCellFromEvent(e);
         if (!cell) return;
         if (game.tryMoveToCell(cell[0], cell[1])) {
+          playMove(getMoveProximity());
           const s = game.getState();
           playerVisualPos[0] = s.playerPos[0] + 0.5;
           playerVisualPos[1] = s.playerPos[1] + 0.5;

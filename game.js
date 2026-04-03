@@ -79,15 +79,16 @@ function createGame(mazes, callbacks) {
   }
 
   function tryMove(dir) {
-    if (transitioning) return;
+    if (transitioning) return false;
     const maze = getMaze();
-    if (!maze) return;
+    if (!maze) return false;
     const { grid, size, end } = maze;
     const [x, y] = playerPos;
-    if (!canMove(grid, size, x, y, dir)) return;
+    if (!canMove(grid, size, x, y, dir)) return false;
     const nx = x + DIR_DX[dir];
     const ny = y + DIR_DY[dir];
     doMove(nx, ny, end);
+    return true;
   }
 
   /** Move to adjacent cell (nx, ny). Used by keyboard and pointer. */

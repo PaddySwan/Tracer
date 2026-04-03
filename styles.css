@@ -426,6 +426,26 @@ html, body {
   display: none !important;
 }
 
+/* Mute toggle */
+.btn-mute {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  line-height: 1;
+  padding: 0.25rem;
+  cursor: pointer;
+  opacity: 0.4;
+  z-index: 50;
+  transition: opacity 0.15s;
+}
+
+.btn-mute:hover {
+  opacity: 1;
+}
+
 /* Site footer */
 .site-footer {
   position: fixed;
