@@ -2,12 +2,13 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=33';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=33';
-import { createInputHandler } from './input.js?v=33';
-import { createGame, formatTime } from './game.js?v=33';
-import { saveRun, loadRun } from './storage.js?v=33';
-const REVISION = 33; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=34';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=34';
+import { createInputHandler } from './input.js?v=34';
+import { createGame, formatTime } from './game.js?v=34';
+import { saveRun, loadRun } from './storage.js?v=34';
+const REVISION = 34; // Bump when making changes so you know you're on a new version
+const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
 
 // DOM
 const landing = document.getElementById('landing');
@@ -243,9 +244,8 @@ function hideRecapExpand() {
 }
 
 function copyResult() {
-  const dayNum = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
   const lines = [
-    `Tracer #${dayNum}`,
+    `Tracer #${DAY_NUM}`,
     '',
     ...completedSplits.map((ms, i) => `${TRAIL_EMOJIS[i]} Maze ${i + 1}: ${formatTime(ms)}`),
     '',
@@ -302,6 +302,8 @@ function launchPracticeMaze(autoStart = false) {
 
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
+  document.getElementById('day-number').textContent = `Tracer #${DAY_NUM}`;
+  document.getElementById('results-day-number').textContent = `Tracer #${DAY_NUM}`;
   dailySeed = getDailySeed();
   dailyMazes = generateDailyMazes(dailySeed);
   completedTrails = [];

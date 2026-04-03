@@ -1,0 +1,19 @@
+# Claude Code
+.claude/
+CLAUDE.md
+
+# Local dev reference
+ref/maze_daily_game_spec.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Node (if ever added)
+node_modules/

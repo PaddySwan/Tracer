@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Tracer — Daily Maze</title>
   <link rel="icon" href="assets/favicon.ico">
-  <link rel="stylesheet" href="styles.css?v=33">
+  <link rel="stylesheet" href="styles.css?v=34">
 </head>
 <body>
   <div id="app">
     <!-- Landing Screen -->
     <section id="landing" class="screen active">
       <h1 class="logo">Tracer</h1>
+      <p id="day-number" class="day-number"></p>
       <p class="tagline">Six mazes. One clock.</p>
       <button id="btn-start" class="btn-primary">Start Today's Run</button>
       <button id="btn-practice" class="btn-secondary">Practice</button>
@@ -43,6 +44,7 @@
     <!-- Results Screen -->
     <section id="results" class="screen">
       <h1 class="results-title">Run Complete</h1>
+      <p id="results-day-number" class="day-number"></p>
       <p id="total-time" class="total-time">Total — 0:00.00</p>
       <div id="recap-panels" class="recap-panels"></div>
       <div id="splits-list" class="splits-list"></div>
@@ -70,6 +72,6 @@
     <span>© 2026 Patrick Swanson</span>
   </footer>
 
-  <script type="module" src="app.js?v=33"></script>
+  <script type="module" src="app.js?v=34"></script>
 </body>
 </html>

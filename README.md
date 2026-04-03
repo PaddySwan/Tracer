@@ -44,4 +44,23 @@ npx serve .
 python -m http.server
 ```
 
-Bump `REVISION` in `app.js` and add a row to the Dev Revisions table in `ref/maze_daily_game_spec.md` when shipping a change.
+Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a change.
+
+## Changelog
+
+| Rev | What's new |
+|-----|------------|
+| 1 | Launch: six mazes, keyboard + touch controls, timer, trail recording, recap screen |
+| 6 | Improved maze generation (Wilson's algorithm), trail heatmap fade, tap-to-move |
+| 9 | Six mazes in a 3×2 recap grid; click any panel to expand it |
+| 11 | Keyboard feel: first tap moves one cell, hold starts fast repeat |
+| 16 | Title font changed to Pacifico |
+| 20 | Smooth animated movement (tween queue, easeInOut) |
+| 23 | Goal node displayed as a star |
+| 24 | Start and end corners vary per maze |
+| 25 | Better maze quality — minimum path length enforced |
+| 26 | One run per day; result saved so you can return to view it |
+| 27 | Practice mode: endless random mazes, no timer pressure |
+| 30 | Self-hosted fonts and favicon |
+| 33 | Emoji trail colors in results and copy text |
+| 34 | Daily number shown on home and results screens |
