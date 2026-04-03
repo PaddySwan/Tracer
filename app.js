@@ -2,13 +2,13 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=38';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=38';
-import { createInputHandler } from './input.js?v=38';
-import { createGame, formatTime } from './game.js?v=38';
-import { saveRun, loadRun } from './storage.js?v=38';
-import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=38';
-const REVISION = 38; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=40';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=40';
+import { createInputHandler } from './input.js?v=40';
+import { createGame, formatTime } from './game.js?v=40';
+import { saveRun, loadRun } from './storage.js?v=40';
+import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=40';
+const REVISION = 40; // Bump when making changes so you know you're on a new version
 const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
 const HOLIDAY = getHoliday(new Date());
 const activeColors = HOLIDAY ? HOLIDAY.trailColors : TRAIL_COLORS;
@@ -258,7 +258,9 @@ function copyResult() {
     '',
     `Total: ${formatTime(runTotalMs)}`,
   ];
-  navigator.clipboard.writeText(lines.join('\n')).then(() => {
+  const text = lines.join('\n');
+
+  function onSuccess() {
     const label = btnCopy.textContent;
     btnCopy.textContent = 'Copied!';
     btnCopy.disabled = true;
@@ -266,7 +268,24 @@ function copyResult() {
       btnCopy.textContent = label;
       btnCopy.disabled = false;
     }, 2000);
-  }).catch(() => {});
+  }
+
+  if (navigator.clipboard?.writeText) {
+    navigator.clipboard.writeText(text).then(onSuccess).catch(() => execCommandCopy(text, onSuccess));
+  } else {
+    execCommandCopy(text, onSuccess);
+  }
+}
+
+function execCommandCopy(text, onSuccess) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+  document.body.appendChild(ta);
+  ta.focus();
+  ta.select();
+  try { if (document.execCommand('copy')) onSuccess(); } catch (_) {}
+  document.body.removeChild(ta);
 }
 
 async function shareImage() {
@@ -336,26 +355,34 @@ async function shareImage() {
   ctx.textAlign = 'center';
   ctx.fillText(`Total  ${formatTime(runTotalMs)}`, W / 2, totalLineY);
 
-  // Copy image to clipboard
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-    const label = btnShare.textContent;
-    btnShare.textContent = 'Copied!';
+  const canCopyImage = navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
+
+  function flashBtn(label) {
+    btnShare.textContent = label;
     btnShare.disabled = true;
     setTimeout(() => {
-      btnShare.textContent = label;
+      btnShare.textContent = 'Copy Image';
       btnShare.disabled = false;
     }, 2000);
-  } catch (e) {
-    // Fallback: download if clipboard write is denied
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tracer-${DAY_NUM}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
   }
+
+  if (canCopyImage) {
+    try {
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      flashBtn('Copied!');
+      return;
+    } catch (_) {}
+  }
+
+  // Fallback: download
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tracer-${DAY_NUM}.png`;
+  a.click();
+  URL.revokeObjectURL(url);
+  flashBtn('Saved!');
 }
 
 function launchPracticeMaze(autoStart = false) {
