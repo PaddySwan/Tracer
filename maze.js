@@ -7,6 +7,62 @@ const MAZE_SIZES = [7, 8, 9, 10, 11, 12]; // 6 mazes; small and quick
 const TRAIL_COLORS = ['#1D4DFF', '#FF2A1A', '#F4F000', '#FFAA00', '#00A62E', '#B84DFF'];
 const TRAIL_EMOJIS = ['🔵', '🔴', '🟡', '🟠', '🟢', '🟣'];
 
+// --- Holiday theming ---
+
+function _easterDate(year) {
+  // Meeus/Jones/Butcher algorithm
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return { month, day };
+}
+
+function _thanksgivingDay(year) {
+  // 4th Thursday of November
+  const nov1Day = new Date(year, 10, 1).getDay(); // 0=Sun
+  const firstThursday = (4 - nov1Day + 7) % 7 + 1;
+  return firstThursday + 21;
+}
+
+const HOLIDAYS = {
+  //                                                                                                              accent       wallColor
+  newyear:      { name: "New Year's Day",    greeting: "Happy New Year! 🎆",          accentColor: '#FFD700', wallColor: null,      trailColors: ['#FFD700','#C0C0C0','#1D4DFF','#9B59B6','#FF8C00','#00BFFF'], trailEmojis: ['🌟','🥂','🎊','💫','🎆','✨'] },
+  valentine:    { name: "Valentine's Day",   greeting: "Happy Valentine's Day! ❤️",   accentColor: '#FF4D94', wallColor: '#7A1A3A', trailColors: ['#FF1A6B','#FF69B4','#FF0055','#E91E8C','#FF4D94','#C2185B'], trailEmojis: ['❤️','🩷','💖','💕','💗','💝'] },
+  stpatricks:   { name: "St. Patrick's Day", greeting: "Happy St. Patrick's Day! 🍀", accentColor: '#34C759', wallColor: '#2A5C2A', trailColors: ['#00A62E','#34C759','#FFD700','#2E7D32','#66BB6A','#FFC107'], trailEmojis: ['🟢','🍀','💚','🌟','🌿','✨'] },
+  easter:       { name: 'Easter',            greeting: 'Happy Easter! 🐣',            accentColor: '#C8A2E8', wallColor: '#3D7A2A', trailColors: ['#FF9EBC','#C8A2E8','#98DFC6','#F7E96A','#FFB347','#87CEEB'], trailEmojis: ['🩷','💜','🥚','🐣','🌸','🩵'] },
+  independence: { name: 'Independence Day',  greeting: 'Happy 4th of July! 🎇',       accentColor: '#FF2A1A', wallColor: '#2E4A6B', trailColors: ['#FF2A1A','#1D4DFF','#E8E8E8','#CC1111','#4A90D9','#003DA5'], trailEmojis: ['🔴','🔵','⭐','❤️','💙','🌟'] },
+  halloween:    { name: 'Halloween',         greeting: 'Happy Halloween! 🎃',          accentColor: '#FF6B00', wallColor: '#3D1A5C', trailColors: ['#FF6B00','#9B59B6','#FF8C00','#7B2FBE','#FFD700','#CC5500'], trailEmojis: ['🎃','🟣','🟠','👻','⭐','🦇'] },
+  thanksgiving: { name: 'Thanksgiving',      greeting: 'Happy Thanksgiving! 🦃',       accentColor: '#FF8F00', wallColor: '#3D2000', trailColors: ['#E65100','#FF8F00','#BF360C','#F57F17','#795548','#FF6F00'], trailEmojis: ['🟠','🍂','🦃','🟡','🤎','🍁'] },
+  christmas:    { name: 'Christmas',         greeting: 'Merry Christmas! 🎄',          accentColor: '#CC0000', wallColor: '#1A5C1A', trailColors: ['#CC0000','#228B22','#FFD700','#FF3333','#006400','#C0C0C0'], trailEmojis: ['🔴','🟢','⭐','🎄','❄️','🎁'] },
+};
+
+function getHoliday(date) {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  if (month === 1  && day === 1)  return HOLIDAYS.newyear;
+  if (month === 2  && day === 14) return HOLIDAYS.valentine;
+  if (month === 3  && day === 17) return HOLIDAYS.stpatricks;
+  const e = _easterDate(year);
+  if (month === e.month && day === e.day) return HOLIDAYS.easter;
+  if (month === 7  && day === 4)  return HOLIDAYS.independence;
+  if (month === 10 && day === 31) return HOLIDAYS.halloween;
+  if (month === 11 && day === _thanksgivingDay(year)) return HOLIDAYS.thanksgiving;
+  if (month === 12 && day === 25) return HOLIDAYS.christmas;
+  return null;
+}
+
 // Seeded PRNG (mulberry32)
 function mulberry32(seed) {
   return function () {
@@ -206,6 +262,7 @@ export {
   generateDailyMazes,
   generateMaze,
   mulberry32,
+  getHoliday,
   MAZE_SIZES,
   TRAIL_COLORS,
   TRAIL_EMOJIS,

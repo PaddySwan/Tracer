@@ -86,11 +86,18 @@ html, body {
   font-size: clamp(2.5rem, 8vw, 4rem);
   letter-spacing: -0.02em;
   margin-bottom: 0.25rem;
+  color: var(--holiday-color, var(--text));
 }
 
 .day-number {
   font-size: 0.9375rem;
-  color: var(--text-secondary);
+  color: var(--holiday-color, var(--text-secondary));
+}
+
+.holiday-greeting {
+  font-size: 1rem;
+  color: var(--holiday-color, var(--text-secondary));
+  font-weight: 500;
 }
 
 .tagline {
@@ -301,6 +308,7 @@ html, body {
   font-family: 'Pacifico', cursive;
   font-weight: 400;
   font-size: 1.75rem;
+  color: var(--holiday-color, var(--text));
 }
 
 .total-time {

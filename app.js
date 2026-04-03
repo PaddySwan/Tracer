@@ -2,13 +2,17 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=35';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=35';
-import { createInputHandler } from './input.js?v=35';
-import { createGame, formatTime } from './game.js?v=35';
-import { saveRun, loadRun } from './storage.js?v=35';
-const REVISION = 35; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=37';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=37';
+import { createInputHandler } from './input.js?v=37';
+import { createGame, formatTime } from './game.js?v=37';
+import { saveRun, loadRun } from './storage.js?v=37';
+const REVISION = 37; // Bump when making changes so you know you're on a new version
 const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
+const HOLIDAY = getHoliday(new Date());
+const activeColors = HOLIDAY ? HOLIDAY.trailColors : TRAIL_COLORS;
+const activeEmojis = HOLIDAY ? HOLIDAY.trailEmojis : TRAIL_EMOJIS;
+const activeWallColor = HOLIDAY?.wallColor ?? undefined; // undefined = render.js default
 
 // DOM
 const landing = document.getElementById('landing');
@@ -137,9 +141,9 @@ function tickTween(state, now) {
   playerVisualPos[1] = tweenFrom[1] + (tweenTo[1] - tweenFrom[1]) * t;
 
   const ctx = mazeCanvas.getContext('2d');
-  const colorIndex = practiceActive ? practiceMazeCount % TRAIL_COLORS.length : state.mazeIndex;
-  const color = TRAIL_COLORS[colorIndex];
-  renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx);
+  const colorIndex = practiceActive ? practiceMazeCount % activeColors.length : state.mazeIndex;
+  const color = activeColors[colorIndex];
+  renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx, activeWallColor);
 }
 
 function gameLoop(now) {
@@ -202,7 +206,7 @@ function buildResultsScreen() {
     const cellPx = panelSize / maze.size;
     canvas.width = maze.size * cellPx;
     canvas.height = maze.size * cellPx;
-    renderRecapPanel(ctx, maze, trail, TRAIL_COLORS[i], panelSize);
+    renderRecapPanel(ctx, maze, trail, activeColors[i], panelSize, activeWallColor);
     const split = completedSplits[i] != null ? (completedSplits[i] / 1000).toFixed(2) : '—';
     div.appendChild(canvas);
     const span = document.createElement('span');
@@ -217,14 +221,14 @@ function buildResultsScreen() {
   });
 
   splitsList.innerHTML = completedSplits
-    .map((ms, i) => `${TRAIL_EMOJIS[i]} Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`)
+    .map((ms, i) => `${activeEmojis[i]} Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`)
     .join('<br>');
 }
 
 function showRecapExpand(index) {
   const maze = mazes[index];
   const trail = completedTrails[index] || [];
-  const color = TRAIL_COLORS[index];
+  const color = activeColors[index];
   const sizePx = Math.min(420, window.innerWidth - 48, window.innerHeight - 120);
   const cellPx = sizePx / maze.size;
   const w = maze.size * cellPx;
@@ -232,7 +236,7 @@ function showRecapExpand(index) {
   recapExpandCanvas.width = w;
   recapExpandCanvas.height = h;
   const ctx = recapExpandCanvas.getContext('2d');
-  renderRecapPanel(ctx, maze, trail, color, sizePx);
+  renderRecapPanel(ctx, maze, trail, color, sizePx, activeWallColor);
   recapExpandTitle.textContent = `Maze ${index + 1}`;
   recapExpandSplit.textContent = completedSplits[index] != null ? (completedSplits[index] / 1000).toFixed(2) + 's' : '—';
   recapExpandOverlay.classList.remove('hidden');
@@ -248,7 +252,7 @@ function copyResult() {
   const lines = [
     `Tracer #${DAY_NUM}`,
     '',
-    ...completedSplits.map((ms, i) => `${TRAIL_EMOJIS[i]} Maze ${i + 1}: ${formatTime(ms)}`),
+    ...completedSplits.map((ms, i) => `${activeEmojis[i]} Maze ${i + 1}: ${formatTime(ms)}`),
     '',
     `Total: ${formatTime(runTotalMs)}`,
   ];
@@ -311,7 +315,7 @@ async function shareImage() {
     const mctx = mc.getContext('2d');
     mctx.fillStyle = '#0A0A0A';
     mctx.fillRect(0, 0, mazePx, mazePx);
-    renderRecapPanel(mctx, mazes[i], completedTrails[i] || [], TRAIL_COLORS[i], mazePx);
+    renderRecapPanel(mctx, mazes[i], completedTrails[i] || [], activeColors[i], mazePx, activeWallColor);
     ctx.drawImage(mc, x, y);
 
     // Split label
@@ -319,7 +323,7 @@ async function shareImage() {
     ctx.fillStyle = '#B8B8B8';
     ctx.font = '500 22px Inter';
     ctx.textAlign = 'center';
-    ctx.fillText(`${TRAIL_EMOJIS[i]} ${split}`, x + mazePx / 2, y + mazePx + 26);
+    ctx.fillText(`${activeEmojis[i]} ${split}`, x + mazePx / 2, y + mazePx + 26);
   }
 
   // Total time
@@ -394,6 +398,13 @@ function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
   document.getElementById('day-number').textContent = `Tracer #${DAY_NUM}`;
   document.getElementById('results-day-number').textContent = `Tracer #${DAY_NUM}`;
+  if (HOLIDAY) {
+    document.documentElement.style.setProperty('--holiday-color', HOLIDAY.accentColor);
+    document.getElementById('landing-greeting').textContent = HOLIDAY.greeting;
+    document.getElementById('landing-greeting').classList.remove('hidden');
+    document.getElementById('results-greeting').textContent = HOLIDAY.greeting;
+    document.getElementById('results-greeting').classList.remove('hidden');
+  }
   dailySeed = getDailySeed();
   dailyMazes = generateDailyMazes(dailySeed);
   completedTrails = [];

@@ -49,8 +49,8 @@ function drawGrid(ctx, size, cellPx) {
 /**
  * Draw maze walls from grid bitmask. Clearly visible lines.
  */
-function drawWalls(ctx, grid, size, cellPx) {
-  ctx.strokeStyle = WALL_COLOR;
+function drawWalls(ctx, grid, size, cellPx, wallColor = WALL_COLOR) {
+  ctx.strokeStyle = wallColor;
   ctx.lineWidth = Math.max(WALL_LINE_WIDTH, Math.floor(cellPx * 0.12));
   ctx.lineCap = 'round';
   for (let y = 0; y < size; y++) {
@@ -166,13 +166,13 @@ function drawPlayer(ctx, x, y, cellPx, trailColor) {
  * Full frame: grid, walls, trail, nodes, player.
  * playerVisualPos: [x, y] in cell coords (fractional for smooth movement).
  */
-function renderMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx) {
+function renderMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx, wallColor) {
   const { grid, size, start, end } = maze;
   const w = size * cellPx;
   const h = size * cellPx;
   ctx.clearRect(0, 0, w, h);
   drawGrid(ctx, size, cellPx);
-  drawWalls(ctx, grid, size, cellPx);
+  drawWalls(ctx, grid, size, cellPx, wallColor);
   drawTrail(ctx, trail, size, cellPx, trailColor);
   drawNodes(ctx, start, end, size, cellPx, trailColor);
   drawPlayer(ctx, playerVisualPos[0], playerVisualPos[1], cellPx, trailColor);
@@ -181,13 +181,13 @@ function renderMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx) {
 /**
  * Render a small recap panel (maze + trail only, no player).
  */
-function renderRecapPanel(ctx, maze, trail, trailColor, widthPx) {
+function renderRecapPanel(ctx, maze, trail, trailColor, widthPx, wallColor) {
   const { grid, size, start, end } = maze;
   const cellPx = widthPx / size;
   const side = size * cellPx;
   ctx.clearRect(0, 0, side, side);
   drawGrid(ctx, size, cellPx);
-  drawWalls(ctx, grid, size, cellPx);
+  drawWalls(ctx, grid, size, cellPx, wallColor);
   drawTrail(ctx, trail, size, cellPx, trailColor, true);
   drawNodes(ctx, start, end, size, cellPx, trailColor);
 }
