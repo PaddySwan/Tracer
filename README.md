@@ -67,3 +67,6 @@ Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a
 | 35 | Copy Image: copies a 1080×1080 PNG to the clipboard — paste directly into any app to share |
 | 36 | Holiday theming: trail colors, wall colors, UI accent, and greeting message on 8 major holidays |
 | 38 | Sound effects: move tick, maze clear chime, run complete fanfare — off by default with a mute toggle |
+| 41 | Mobile layout fix: maze now fits the screen without scrolling |
+| 42 | Mute button moved below the maze with a cleaner icon |
+| 46 | History view: tap the calendar icon on the home screen to see every day you've played this year, color-coded by speed |

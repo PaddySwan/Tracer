@@ -18,8 +18,9 @@ const TRAIL_FADE_FAR = 0.12;
  * Get canvas size so the full maze fits in the viewport. Cells stay square.
  */
 function getCanvasSize(size) {
+  const hPad = 32; // 2 × 1rem horizontal padding in gameplay screen
   const maxSide = Math.min(
-    typeof window !== 'undefined' ? window.innerWidth : 800,
+    typeof window !== 'undefined' ? window.innerWidth - hPad : 800,
     typeof window !== 'undefined' ? window.innerHeight - 120 : 600,
     520
   );

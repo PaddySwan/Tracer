@@ -12,7 +12,7 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.ico">
-  <link rel="stylesheet" href="styles.css?v=40">
+  <link rel="stylesheet" href="styles.css?v=48">
 </head>
 <body>
   <div id="app">
@@ -23,7 +23,10 @@
       <p id="day-number" class="day-number"></p>
       <p id="landing-greeting" class="holiday-greeting hidden"></p>
       <button id="btn-start" class="btn-primary">Start Today's Run</button>
-      <button id="btn-practice" class="btn-secondary">Practice</button>
+      <div class="landing-actions-row">
+        <button id="btn-practice" class="btn-secondary">Practice</button>
+        <button id="btn-history" class="btn-icon-secondary" aria-label="Play history"></button>
+      </div>
       <p class="hint">Arrow keys, WASD, or click and drag · New mazes daily</p>
       <p id="revision" class="revision"></p>
     </section>
@@ -45,6 +48,9 @@
       <div id="maze-clear-overlay" class="maze-clear-overlay hidden">
         <span class="maze-clear-text">Maze Clear</span>
         <span id="split-time" class="split-time"></span>
+      </div>
+      <div class="game-toolbar">
+        <button id="btn-mute" class="btn-mute" aria-label="Toggle sound"></button>
       </div>
       <footer id="splits-footer" class="splits-footer"></footer>
     </section>
@@ -75,15 +81,35 @@
         <canvas id="recap-expand-canvas" aria-label="Expanded maze view"></canvas>
       </div>
     </div>
-  </div>
 
-  <button id="btn-mute" class="btn-mute" aria-label="Toggle sound">🔇</button>
+    <!-- History overlay -->
+    <div id="history-overlay" class="history-overlay hidden" aria-hidden="true">
+      <div class="history-content">
+        <div class="history-header">
+          <span id="history-title" class="history-title"></span>
+          <button type="button" class="recap-expand-close" aria-label="Close">×</button>
+        </div>
+        <div id="history-grid" class="history-grid-wrap"></div>
+        <div class="history-key">
+          <span class="history-key-label">Faster</span>
+          <div class="history-key-swatches">
+            <div style="background:#22c55e"></div>
+            <div style="background:#84cc16"></div>
+            <div style="background:#eab308"></div>
+            <div style="background:#f97316"></div>
+            <div style="background:#ef4444"></div>
+          </div>
+          <span class="history-key-label">Slower</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <img src="assets/swan_logo.png" alt="Patrick Swanson" class="footer-logo">
     <span>© 2026 Patrick Swanson</span>
   </footer>
 
-  <script type="module" src="app.js?v=40"></script>
+  <script type="module" src="app.js?v=48"></script>
 </body>
 </html>

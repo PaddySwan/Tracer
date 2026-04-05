@@ -2,13 +2,28 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=40';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=40';
-import { createInputHandler } from './input.js?v=40';
-import { createGame, formatTime } from './game.js?v=40';
-import { saveRun, loadRun } from './storage.js?v=40';
-import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=40';
-const REVISION = 40; // Bump when making changes so you know you're on a new version
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=48';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=48';
+import { createInputHandler } from './input.js?v=48';
+import { createGame, formatTime } from './game.js?v=48';
+import { saveRun, loadRun } from './storage.js?v=48';
+import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=48';
+const REVISION = 48;
+
+const ICON_SOUND    = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
+const ICON_MUTE     = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
+const ICON_HISTORY  = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+
+// History color scale: green (fast) → red (slow)
+const TIME_THRESHOLDS = [45000, 75000, 105000, 150000]; // ms
+const TIME_COLORS     = ['#22c55e', '#84cc16', '#eab308', '#f97316', '#ef4444'];
+
+function getTimeColor(ms) {
+  for (let i = 0; i < TIME_THRESHOLDS.length; i++) {
+    if (ms <= TIME_THRESHOLDS[i]) return TIME_COLORS[i];
+  }
+  return TIME_COLORS[4];
+}
 const DAY_NUM = Math.floor((Date.now() - new Date('2026-01-01T00:00:00Z')) / 86400000) + 1;
 const HOLIDAY = getHoliday(new Date());
 const activeColors = HOLIDAY ? HOLIDAY.trailColors : TRAIL_COLORS;
@@ -42,6 +57,10 @@ const recapExpandOverlay = document.getElementById('recap-expand-overlay');
 const recapExpandCanvas = document.getElementById('recap-expand-canvas');
 const recapExpandTitle = document.getElementById('recap-expand-title');
 const recapExpandSplit = document.getElementById('recap-expand-split');
+const btnHistory = document.getElementById('btn-history');
+const historyOverlay = document.getElementById('history-overlay');
+const historyTitleEl = document.getElementById('history-title');
+const historyGridEl = document.getElementById('history-grid');
 
 let dailySeed;
 let dailyMazes;
@@ -424,12 +443,105 @@ function launchPracticeMaze(autoStart = false) {
   if (autoStart) game.startRun();
 }
 
+function openHistory() {
+  const year = new Date().getFullYear();
+  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+  const jan1 = new Date(year, 0, 1);
+  const startOffset = (jan1.getDay() + 6) % 7; // Mon=0 … Sun=6
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  const daysInYear = isLeap ? 366 : 365;
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const CELL = 11; const GAP = 2; // px
+
+  // Read only totalMs from existing run keys — no extra storage needed
+  const totalMsByDay = {};
+  for (let i = 0; i < daysInYear; i++) {
+    const d = new Date(year, 0, 1 + i);
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    try {
+      const raw = localStorage.getItem(`tracer_run_${year}-${mm}-${dd}`);
+      if (raw) totalMsByDay[i] = JSON.parse(raw).totalMs;
+    } catch (_) {}
+  }
+
+  const totalWeeks = Math.ceil((startOffset + daysInYear) / 7);
+  const gridPx = totalWeeks * CELL + (totalWeeks - 1) * GAP;
+
+  // Which week index does each month start in?
+  const monthAtWeek = {};
+  for (let i = 0; i < daysInYear; i++) {
+    const d = new Date(year, 0, 1 + i);
+    if (d.getDate() === 1) monthAtWeek[Math.floor((startOffset + i) / 7)] = MONTHS[d.getMonth()];
+  }
+
+  historyTitleEl.textContent = String(year);
+  historyGridEl.innerHTML = '';
+
+  // Wrapper with known pixel width — gives scroll container an exact size to work with
+  const wrapper = document.createElement('div');
+  wrapper.className = 'history-inner';
+  wrapper.style.width = gridPx + 'px';
+
+  // Month labels — absolutely positioned at their exact week column offset
+  for (const [weekIdx, name] of Object.entries(monthAtWeek)) {
+    const label = document.createElement('span');
+    label.className = 'history-month-label';
+    label.textContent = name;
+    label.style.left = (Number(weekIdx) * (CELL + GAP)) + 'px';
+    wrapper.appendChild(label);
+  }
+
+  // Week columns
+  const weeksEl = document.createElement('div');
+  weeksEl.className = 'history-weeks';
+  for (let w = 0; w < totalWeeks; w++) {
+    const weekEl = document.createElement('div');
+    weekEl.className = 'history-week';
+    for (let d = 0; d < 7; d++) {
+      const dayIdx = w * 7 + d - startOffset;
+      const cell = document.createElement('div');
+      cell.className = 'history-cell';
+      if (dayIdx < 0 || dayIdx >= daysInYear) {
+        cell.classList.add('hc-empty');
+      } else {
+        const date = new Date(year, 0, 1 + dayIdx);
+        if (date.getTime() === todayStart.getTime()) cell.classList.add('hc-today');
+        if (totalMsByDay[dayIdx] != null) {
+          cell.style.background = getTimeColor(totalMsByDay[dayIdx]);
+          const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          cell.title = `${label} — ${formatTime(totalMsByDay[dayIdx])}`;
+        }
+        // unplayed (past or future) keeps default dark .history-cell style
+      }
+      weekEl.appendChild(cell);
+    }
+    weeksEl.appendChild(weekEl);
+  }
+  wrapper.appendChild(weeksEl);
+  historyGridEl.appendChild(wrapper);
+
+  historyOverlay.classList.remove('hidden');
+  historyOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeHistory() {
+  historyOverlay.classList.add('hidden');
+  historyOverlay.setAttribute('aria-hidden', 'true');
+}
+
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
-  btnMute.textContent = isMuted() ? '🔇' : '🔊';
+  btnHistory.innerHTML = ICON_HISTORY;
+  btnHistory.addEventListener('click', openHistory);
+  historyOverlay.addEventListener('click', (e) => {
+    if (e.target === historyOverlay || e.target.closest('.recap-expand-close')) closeHistory();
+  });
+
+  btnMute.innerHTML = isMuted() ? ICON_MUTE : ICON_SOUND;
   btnMute.addEventListener('click', () => {
     setMuted(!isMuted());
-    btnMute.textContent = isMuted() ? '🔇' : '🔊';
+    btnMute.innerHTML = isMuted() ? ICON_MUTE : ICON_SOUND;
   });
   document.getElementById('day-number').textContent = `Tracer #${DAY_NUM}`;
   document.getElementById('results-day-number').textContent = `Tracer #${DAY_NUM}`;
@@ -630,7 +742,10 @@ function init() {
     if (e.target === recapExpandOverlay || e.target.closest('.recap-expand-close')) hideRecapExpand();
   });
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !recapExpandOverlay.classList.contains('hidden')) hideRecapExpand();
+    if (e.key === 'Escape') {
+      if (!recapExpandOverlay.classList.contains('hidden')) hideRecapExpand();
+      if (!historyOverlay.classList.contains('hidden')) closeHistory();
+    }
   });
 }
 
