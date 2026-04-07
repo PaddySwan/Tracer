@@ -154,13 +154,20 @@ function drawPlayer(ctx, x, y, cellPx, trailColor) {
   const px = x * cellPx;
   const py = y * cellPx;
   const r = cellPx * PLAYER_RADIUS;
+  // Outer ring in trail color keeps theme identity
   ctx.beginPath();
   ctx.arc(px, py, r, 0, Math.PI * 2);
   ctx.fillStyle = trailColor;
   ctx.fill();
-  ctx.strokeStyle = '#F5F5F5';
-  ctx.lineWidth = 1.5;
+  // Dark border separates player from the trail beneath
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.lineWidth = 2;
   ctx.stroke();
+  // White core always visible against trail
+  ctx.beginPath();
+  ctx.arc(px, py, r * 0.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
 }
 
 /**
