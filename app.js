@@ -2,15 +2,32 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=51';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=51';
-import { createInputHandler } from './input.js?v=51';
-import { createGame, formatTime } from './game.js?v=51';
-import { saveRun, loadRun } from './storage.js?v=51';
-import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=51';
-const REVISION = 51;
-const LATEST_CHANGE = 'Latest update: Daily maze rollover time (midnight UTC) now shown on the home screen with local equivalents for PT, ET, CET, and JST.';
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=53';
+import { getCanvasSize, renderMaze, renderRecapPanel, renderGlyph, renderBlindMaze, renderDarkMaze } from './render.js?v=53';
+import { createInputHandler } from './input.js?v=53';
+import { createGame, formatTime } from './game.js?v=53';
+import { saveRun, loadRun } from './storage.js?v=53';
+import { isMuted, setMuted, getVolume, setVolume, playMove, playMazeClear, playRunComplete, isGroanMode, setGroanMode, playGroanUnlock, playGroanDisable, playGroanMove } from './sound.js?v=53';
+const REVISION = 53;
+const LATEST_CHANGE = 'Latest update: Settings panel added — adjust volume, toggle sound, and try experimental practice modes: Blind Mode (navigate by sound alone) and Dark Mode (limited flashlight vision).';
 
+// Experimental mode state (practice only)
+let _blindMode = localStorage.getItem('tracer-blind') === 'on';
+let _darkMode  = localStorage.getItem('tracer-dark')  === 'on';
+function isBlindMode() { return _blindMode; }
+function isDarkMode()  { return _darkMode; }
+function setBlindMode(val) {
+  _blindMode = val;
+  if (val) { _darkMode = false; localStorage.setItem('tracer-dark', 'off'); }
+  localStorage.setItem('tracer-blind', val ? 'on' : 'off');
+}
+function setDarkMode(val) {
+  _darkMode = val;
+  if (val) { _blindMode = false; localStorage.setItem('tracer-blind', 'off'); }
+  localStorage.setItem('tracer-dark', val ? 'on' : 'off');
+}
+
+const ICON_SETTINGS = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>`;
 const ICON_SOUND    = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
 const ICON_MUTE     = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
 const ICON_HISTORY  = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
@@ -46,7 +63,6 @@ const splitTimeEl = document.getElementById('split-time');
 const splitsFooter = document.getElementById('splits-footer');
 const totalTimeEl = document.getElementById('total-time');
 const recapPanels = document.getElementById('recap-panels');
-const splitsList = document.getElementById('splits-list');
 const btnCopy = document.getElementById('btn-copy');
 const btnShare = document.getElementById('btn-share');
 const btnHome = document.getElementById('btn-home');
@@ -60,6 +76,8 @@ const recapExpandTitle = document.getElementById('recap-expand-title');
 const recapExpandSplit = document.getElementById('recap-expand-split');
 const btnHistory = document.getElementById('btn-history');
 const historyOverlay = document.getElementById('history-overlay');
+const btnSettings = document.getElementById('btn-settings');
+const settingsOverlay = document.getElementById('settings-overlay');
 const historyTitleEl = document.getElementById('history-title');
 const historyGridEl = document.getElementById('history-grid');
 
@@ -165,7 +183,15 @@ function tickTween(state, now) {
   const ctx = mazeCanvas.getContext('2d');
   const colorIndex = practiceActive ? practiceMazeCount % activeColors.length : state.mazeIndex;
   const color = activeColors[colorIndex];
-  renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx, activeWallColor);
+  if (practiceActive && isBlindMode()) {
+    const [sx, sy] = state.maze.start;
+    const atStart = Math.hypot(playerVisualPos[0] - (sx + 0.5), playerVisualPos[1] - (sy + 0.5)) < 0.15;
+    renderBlindMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx, atStart);
+  } else if (practiceActive && isDarkMode()) {
+    renderDarkMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx, activeWallColor);
+  } else {
+    renderMaze(ctx, state.maze, state.trail, [...playerVisualPos], color, cellPx, activeWallColor);
+  }
 }
 
 function gameLoop(now) {
@@ -214,7 +240,7 @@ function buildResultsScreen() {
   totalTimeEl.textContent = `Total — ${formatTime(runTotalMs)}`;
 
   recapPanels.innerHTML = '';
-  const panelSize = 120;
+  const panelSize = 80;
   mazes.forEach((maze, i) => {
     const trail = completedTrails[i] || [];
     const div = document.createElement('div');
@@ -242,9 +268,11 @@ function buildResultsScreen() {
     el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showRecapExpand(parseInt(el.dataset.index, 10)); } });
   });
 
-  splitsList.innerHTML = completedSplits
-    .map((ms, i) => `${activeEmojis[i]} Maze ${i + 1} — ${(ms / 1000).toFixed(2)}`)
-    .join('<br>');
+  const glyphCanvas = document.getElementById('glyph-canvas');
+  const glyphSize = 160;
+  glyphCanvas.width = glyphSize;
+  glyphCanvas.height = glyphSize;
+  renderGlyph(glyphCanvas.getContext('2d'), mazes, completedTrails, activeColors, glyphSize);
 }
 
 function showRecapExpand(index) {
@@ -326,54 +354,28 @@ async function shareImage() {
   ctx.textAlign = 'center';
   ctx.fillStyle = '#F5F5F5';
   ctx.font = '72px Pacifico';
-  ctx.fillText('Tracer', W / 2, 100);
+  ctx.fillText('Tracer', W / 2, 110);
 
   // Day number
   ctx.fillStyle = '#B8B8B8';
-  ctx.font = '500 28px Inter';
-  ctx.fillText(`#${DAY_NUM}`, W / 2, 144);
+  ctx.font = '500 32px Inter';
+  ctx.fillText(`#${DAY_NUM}`, W / 2, 162);
 
-  // Maze grid: 3 cols × 2 rows
-  const mazePx = 300;
-  const colGap = 24;
-  const rowGap = 30;
-  const labelH = 36;
-  const cols = 3;
-  const totalGridW = cols * mazePx + (cols - 1) * colGap;
-  const marginX = (W - totalGridW) / 2;
-  const startY = 196;
-
-  for (let i = 0; i < mazes.length; i++) {
-    const col = i % cols;
-    const row = Math.floor(i / cols);
-    const x = marginX + col * (mazePx + colGap);
-    const y = startY + row * (mazePx + labelH + rowGap);
-
-    // Render maze into a temp canvas (renderRecapPanel calls clearRect, so we fill bg first)
-    const mc = document.createElement('canvas');
-    mc.width = mazePx;
-    mc.height = mazePx;
-    const mctx = mc.getContext('2d');
-    mctx.fillStyle = '#0A0A0A';
-    mctx.fillRect(0, 0, mazePx, mazePx);
-    renderRecapPanel(mctx, mazes[i], completedTrails[i] || [], activeColors[i], mazePx, activeWallColor);
-    ctx.drawImage(mc, x, y);
-
-    // Split label
-    const split = completedSplits[i] != null ? (completedSplits[i] / 1000).toFixed(2) + 's' : '—';
-    ctx.fillStyle = '#B8B8B8';
-    ctx.font = '500 22px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText(`${activeEmojis[i]} ${split}`, x + mazePx / 2, y + mazePx + 26);
-  }
+  // Glyph — centered in the middle of the canvas
+  const glyphSize = 680;
+  const glyphX = (W - glyphSize) / 2;
+  const glyphY = 200;
+  const gc = document.createElement('canvas');
+  gc.width = glyphSize;
+  gc.height = glyphSize;
+  renderGlyph(gc.getContext('2d'), mazes, completedTrails, activeColors, glyphSize);
+  ctx.drawImage(gc, glyphX, glyphY);
 
   // Total time
-  const rowH = mazePx + labelH + rowGap;
-  const totalLineY = startY + 2 * rowH - rowGap + 50;
   ctx.fillStyle = '#F5F5F5';
-  ctx.font = '600 34px Inter';
+  ctx.font = '600 40px Inter';
   ctx.textAlign = 'center';
-  ctx.fillText(`Total  ${formatTime(runTotalMs)}`, W / 2, totalLineY);
+  ctx.fillText(`Total  ${formatTime(runTotalMs)}`, W / 2, glyphY + glyphSize + 64);
 
   const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
   const canCopyImage = navigator.clipboard?.write && typeof ClipboardItem !== 'undefined';
@@ -382,7 +384,7 @@ async function shareImage() {
     btnShare.textContent = label;
     btnShare.disabled = true;
     setTimeout(() => {
-      btnShare.textContent = 'Copy Image';
+      btnShare.textContent = 'Copy Glyph';
       btnShare.disabled = false;
     }, 2000);
   }
@@ -410,6 +412,16 @@ function launchPracticeMaze(autoStart = false) {
   const size = MAZE_SIZES[practiceMazeCount % MAZE_SIZES.length];
   const rng = mulberry32(practiceSeedBase + practiceMazeCount * 1337);
   mazes = [generateMaze(size, rng)];
+  if (isDarkMode()) {
+    const maze = mazes[0];
+    maze.start = [Math.floor(Math.random() * size), Math.floor(Math.random() * size)];
+    let ex, ey;
+    do {
+      ex = Math.floor(Math.random() * size);
+      ey = Math.floor(Math.random() * size);
+    } while (Math.abs(ex - maze.start[0]) + Math.abs(ey - maze.start[1]) < size);
+    maze.end = [ex, ey];
+  }
   lastMazeIndex = -1;
 
   game = createGame(mazes, {
@@ -531,6 +543,33 @@ function closeHistory() {
   historyOverlay.setAttribute('aria-hidden', 'true');
 }
 
+function updateSettingsUI() {
+  const muteToggle = document.getElementById('settings-mute-toggle');
+  muteToggle.textContent = isMuted() ? 'Off' : 'On';
+  muteToggle.classList.toggle('on', !isMuted());
+
+  const blindToggle = document.getElementById('settings-blind-toggle');
+  blindToggle.textContent = isBlindMode() ? 'On' : 'Off';
+  blindToggle.classList.toggle('on', isBlindMode());
+
+  const darkToggle = document.getElementById('settings-dark-toggle');
+  darkToggle.textContent = isDarkMode() ? 'On' : 'Off';
+  darkToggle.classList.toggle('on', isDarkMode());
+
+  document.getElementById('settings-volume').value = getVolume();
+}
+
+function openSettings() {
+  updateSettingsUI();
+  settingsOverlay.classList.remove('hidden');
+  settingsOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeSettings() {
+  settingsOverlay.classList.add('hidden');
+  settingsOverlay.setAttribute('aria-hidden', 'true');
+}
+
 function buildRolloverHint() {
   const now = new Date();
   const nextMidnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
@@ -547,14 +586,67 @@ function buildRolloverHint() {
   return `Resets midnight UTC\n${times.slice(0, 2).join(' · ')}\n${times.slice(2).join(' · ')}`;
 }
 
+const SECRET_CODE = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
+let secretBuffer = [];
+
+function updateGroanBanner() {
+  const banner = document.getElementById('groan-banner');
+  if (isGroanMode()) {
+    banner.classList.remove('hidden');
+  } else {
+    banner.classList.add('hidden');
+  }
+}
+
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
   revisionEl.dataset.tooltip = LATEST_CHANGE;
   document.getElementById('rollover-hint').textContent = buildRolloverHint();
+
+  updateGroanBanner();
+  document.getElementById('btn-groan-off').addEventListener('click', () => {
+    setGroanMode(false);
+    updateGroanBanner();
+    playGroanDisable();
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('landing').classList.contains('active')) return;
+    secretBuffer.push(e.key);
+    if (secretBuffer.length > SECRET_CODE.length) secretBuffer.shift();
+    if (secretBuffer.join(',') === SECRET_CODE.join(',')) {
+      secretBuffer = [];
+      setGroanMode(true);
+      updateGroanBanner();
+      playGroanUnlock();
+    }
+  });
   btnHistory.innerHTML = ICON_HISTORY;
   btnHistory.addEventListener('click', openHistory);
   historyOverlay.addEventListener('click', (e) => {
     if (e.target === historyOverlay || e.target.closest('.recap-expand-close')) closeHistory();
+  });
+
+  btnSettings.innerHTML = ICON_SETTINGS;
+  btnSettings.addEventListener('click', openSettings);
+  settingsOverlay.addEventListener('click', (e) => {
+    if (e.target === settingsOverlay || e.target.closest('.recap-expand-close')) closeSettings();
+  });
+  document.getElementById('settings-mute-toggle').addEventListener('click', () => {
+    setMuted(!isMuted());
+    btnMute.innerHTML = isMuted() ? ICON_MUTE : ICON_SOUND;
+    updateSettingsUI();
+  });
+  document.getElementById('settings-blind-toggle').addEventListener('click', () => {
+    setBlindMode(!isBlindMode());
+    updateSettingsUI();
+  });
+  document.getElementById('settings-dark-toggle').addEventListener('click', () => {
+    setDarkMode(!isDarkMode());
+    updateSettingsUI();
+  });
+  document.getElementById('settings-volume').addEventListener('input', (e) => {
+    setVolume(parseFloat(e.target.value));
   });
 
   btnMute.innerHTML = isMuted() ? ICON_MUTE : ICON_SOUND;
@@ -630,7 +722,7 @@ function init() {
 
   inputHandler = createInputHandler((dir) => {
     if (countdownActive) return;
-    if (game.tryMove(dir)) playMove(getMoveProximity());
+    if (game.tryMove(dir)) isGroanMode() ? playGroanMove(getMoveProximity()) : playMove(getMoveProximity());
   });
 
   function getCellFromEvent(e) {
@@ -660,7 +752,7 @@ function init() {
         const cell = getCellFromEvent(e);
         if (!cell) return;
         if (game.tryMoveToCell(cell[0], cell[1])) {
-          playMove(getMoveProximity());
+          isGroanMode() ? playGroanMove(getMoveProximity()) : playMove(getMoveProximity());
           const s = game.getState();
           playerVisualPos[0] = s.playerPos[0] + 0.5;
           playerVisualPos[1] = s.playerPos[1] + 0.5;

@@ -72,3 +72,5 @@ Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a
 | 46 | History view: tap the calendar icon on the home screen to see every day you've played this year, color-coded by speed |
 | 50 | Mazes now use UTC date so all players worldwide get the same puzzles each day |
 | 51 | Landing screen shows when daily mazes reset (midnight UTC) with local time equivalents for PT, ET, GMT, CET, IST, and JST |
+| 52 | Results screen shows a glyph — all 6 trails overlaid into one abstract image. "Copy Glyph" shares it. Layout reorganized so everything fits without scrolling. |
+| 53 | Settings panel: adjust volume, toggle sound, and unlock experimental practice modes — Blind Mode (navigate by sound alone, no walls visible) and Dark Mode (limited flashlight vision, randomized exit). |

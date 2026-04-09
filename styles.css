@@ -157,6 +157,36 @@ html, body {
   margin-top: 0.75rem;
 }
 
+.groan-banner {
+  position: fixed;
+  top: 1rem;
+  right: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  z-index: 50;
+}
+
+.btn-groan-off {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.2rem 0.5rem;
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-groan-off:hover {
+  background: var(--btn-hover);
+  color: var(--text);
+}
+
 .rollover-hint {
   position: fixed;
   bottom: 1rem;
@@ -378,12 +408,41 @@ html, body {
   font-weight: 600;
 }
 
+.results-main {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 1.5rem;
+}
+
+.results-glyph-col,
+.results-recap-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.glyph-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.glyph-canvas {
+  display: block;
+  border-radius: 12px;
+  flex-shrink: 0;
+  width: 160px;
+  height: 160px;
+}
+
 .recap-panels {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
-  max-width: 420px;
-  margin: 0 auto;
+  gap: 0.5rem;
 }
 
 .recap-panel {
@@ -414,17 +473,6 @@ html, body {
   font-variant-numeric: tabular-nums;
 }
 
-.splits-list {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  font-variant-numeric: tabular-nums;
-}
-
-.results-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 0.5rem;
-}
 
 .recap-expand-overlay {
   position: fixed;
@@ -439,6 +487,162 @@ html, body {
 
 .recap-expand-overlay.hidden {
   display: none !important;
+}
+
+/* Settings overlay */
+.settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.88);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1.5rem;
+}
+
+.settings-content {
+  background: var(--bg);
+  border-radius: 12px;
+  padding: 1.25rem;
+  border: 1px solid var(--border);
+  width: min(360px, calc(100vw - 3rem));
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-title {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.settings-section-title {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.settings-practice-note {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  opacity: 0.55;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.settings-label-group {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.settings-label {
+  font-size: 0.9375rem;
+}
+
+.settings-info {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 0.6rem;
+  color: var(--text-secondary);
+  cursor: default;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.settings-info[data-tooltip]:hover::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 1.5rem;
+  left: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: normal;
+  width: 220px;
+  text-align: left;
+  pointer-events: none;
+  z-index: 200;
+  line-height: 1.4;
+}
+
+.settings-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 120px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border);
+  outline: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.settings-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+}
+
+.settings-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+  border: none;
+}
+
+.settings-toggle {
+  font-family: 'Inter', sans-serif;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--btn-bg);
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-width: 3rem;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.settings-toggle.on {
+  background: var(--text);
+  color: var(--bg);
+  border-color: var(--text);
 }
 
 /* History overlay */

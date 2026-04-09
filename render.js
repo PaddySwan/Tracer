@@ -200,6 +200,74 @@ function renderRecapPanel(ctx, maze, trail, trailColor, widthPx, wallColor) {
   drawNodes(ctx, start, end, size, cellPx, trailColor);
 }
 
+/**
+ * Blind mode: only the start/end nodes are visible.
+ * Player shown only before first move (trail still at length 1).
+ */
+function renderBlindMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx, atStart) {
+  const { size, start, end } = maze;
+  ctx.clearRect(0, 0, size * cellPx, size * cellPx);
+  drawNodes(ctx, start, end, size, cellPx, trailColor);
+  if (atStart) {
+    drawPlayer(ctx, playerVisualPos[0], playerVisualPos[1], cellPx, trailColor);
+  }
+}
+
+/**
+ * Dark mode: flashlight effect — only a circular area around the player is
+ * visible. Uses an off-screen canvas mask with a radial gradient so the
+ * edge fades softly. Nodes appear inside the light; player always visible.
+ */
+function renderDarkMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx, wallColor) {
+  const { grid, size, start, end } = maze;
+  const w = size * cellPx;
+  ctx.clearRect(0, 0, w, w);
+  drawGrid(ctx, size, cellPx);
+  drawWalls(ctx, grid, size, cellPx, wallColor);
+  drawTrail(ctx, trail, size, cellPx, trailColor, true);
+  drawNodes(ctx, start, end, size, cellPx, trailColor);
+
+  // Darkness mask with a soft flashlight hole around the player
+  const px = playerVisualPos[0] * cellPx;
+  const py = playerVisualPos[1] * cellPx;
+  const innerR = cellPx * 0.8;
+  const outerR = cellPx * 1.75;
+  const mask = document.createElement('canvas');
+  mask.width = w;
+  mask.height = w;
+  const mctx = mask.getContext('2d');
+  mctx.fillStyle = '#0A0A0A';
+  mctx.fillRect(0, 0, w, w);
+  mctx.globalCompositeOperation = 'destination-out';
+  const gr = mctx.createRadialGradient(px, py, innerR, px, py, outerR);
+  gr.addColorStop(0, 'rgba(0,0,0,1)');
+  gr.addColorStop(1, 'rgba(0,0,0,0)');
+  mctx.fillStyle = gr;
+  mctx.fillRect(0, 0, w, w);
+  ctx.drawImage(mask, 0, 0);
+
+  drawPlayer(ctx, playerVisualPos[0], playerVisualPos[1], cellPx, trailColor);
+}
+
+/**
+ * Render the glyph: all 6 trails overlaid on the same square canvas,
+ * no walls or grid. Screen blending makes overlapping paths brighten.
+ */
+function renderGlyph(ctx, mazes, trails, colors, sizePx) {
+  ctx.clearRect(0, 0, sizePx, sizePx);
+  ctx.fillStyle = '#0A0A0A';
+  ctx.fillRect(0, 0, sizePx, sizePx);
+  const prev = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'screen';
+  mazes.forEach((maze, i) => {
+    const trail = trails[i] || [];
+    if (trail.length < 2) return;
+    const cellPx = sizePx / maze.size;
+    drawTrail(ctx, trail, maze.size, cellPx, colors[i], false);
+  });
+  ctx.globalCompositeOperation = prev;
+}
+
 export {
   getCanvasSize,
   drawGrid,
@@ -209,4 +277,7 @@ export {
   drawPlayer,
   renderMaze,
   renderRecapPanel,
+  renderGlyph,
+  renderBlindMaze,
+  renderDarkMaze,
 };

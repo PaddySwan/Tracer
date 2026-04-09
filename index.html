@@ -12,12 +12,15 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.ico">
-  <link rel="stylesheet" href="styles.css?v=51">
+  <link rel="stylesheet" href="styles.css?v=53">
 </head>
 <body>
   <div id="app">
     <!-- Landing Screen -->
     <section id="landing" class="screen active">
+      <div id="groan-banner" class="groan-banner hidden">
+        🤢 Groan Mode <button id="btn-groan-off" class="btn-groan-off">Disable</button>
+      </div>
       <h1 class="logo">Tracer</h1>
       <p class="tagline">Six mazes. One clock.</p>
       <p id="day-number" class="day-number"></p>
@@ -25,7 +28,8 @@
       <button id="btn-start" class="btn-primary">Start Today's Run</button>
       <div class="landing-actions-row">
         <button id="btn-practice" class="btn-secondary">Practice</button>
-        <button id="btn-history" class="btn-icon-secondary" aria-label="Play history"></button>
+        <button id="btn-history" class="btn-icon-secondary" aria-label="View history"></button>
+        <button id="btn-settings" class="btn-icon-secondary" aria-label="Settings"></button>
       </div>
       <p class="hint">Arrow keys, WASD, or click and drag · New mazes daily</p>
       <p id="rollover-hint" class="rollover-hint"></p>
@@ -62,13 +66,19 @@
       <p id="results-day-number" class="day-number"></p>
       <p id="results-greeting" class="holiday-greeting hidden"></p>
       <p id="total-time" class="total-time">Total — 0:00.00</p>
-      <div id="recap-panels" class="recap-panels"></div>
-      <div id="splits-list" class="splits-list"></div>
-      <div class="results-actions">
-        <button id="btn-copy" class="btn-secondary">Copy Result</button>
-        <button id="btn-share" class="btn-secondary">Copy Image</button>
-        <button id="btn-home" class="btn-secondary">Home</button>
+      <div class="results-main">
+        <div class="results-glyph-col">
+          <div class="glyph-center">
+            <canvas id="glyph-canvas" class="glyph-canvas"></canvas>
+          </div>
+          <button id="btn-share" class="btn-secondary">Copy Glyph</button>
+        </div>
+        <div class="results-recap-col">
+          <div id="recap-panels" class="recap-panels"></div>
+          <button id="btn-copy" class="btn-secondary">Copy Result</button>
+        </div>
       </div>
+      <button id="btn-home" class="btn-secondary">Home</button>
     </section>
 
     <!-- Recap expand overlay (results screen) -->
@@ -80,6 +90,47 @@
           <button type="button" class="recap-expand-close" aria-label="Close">×</button>
         </div>
         <canvas id="recap-expand-canvas" aria-label="Expanded maze view"></canvas>
+      </div>
+    </div>
+
+    <!-- Settings overlay -->
+    <div id="settings-overlay" class="settings-overlay hidden" aria-hidden="true">
+      <div class="settings-content">
+        <div class="settings-header">
+          <span class="settings-title">Settings</span>
+          <button type="button" class="recap-expand-close" aria-label="Close">×</button>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-title">Audio</h3>
+          <div class="settings-row">
+            <span class="settings-label">Sound effects</span>
+            <button id="settings-mute-toggle" class="settings-toggle"></button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-label">Volume</span>
+            <input type="range" id="settings-volume" class="settings-slider" min="0" max="1" step="0.05">
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3 class="settings-section-title">Experimental Modes</h3>
+          <p class="settings-practice-note">These modes only apply in Practice.</p>
+          <div class="settings-row">
+            <div class="settings-label-group">
+              <span class="settings-label">Blind Mode</span>
+              <span class="settings-info" data-tooltip="Only the start and end points are visible. Once you leave the starting point your player disappears — navigate using sound alone. Not recommended on touch, click-and-drag, or mobile.">?</span>
+            </div>
+            <button id="settings-blind-toggle" class="settings-toggle"></button>
+          </div>
+          <div class="settings-row">
+            <div class="settings-label-group">
+              <span class="settings-label">Dark Mode</span>
+              <span class="settings-info" data-tooltip="Your vision is limited to a small area around your player. The exit is randomly placed and only visible when you're close.">?</span>
+            </div>
+            <button id="settings-dark-toggle" class="settings-toggle"></button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -111,6 +162,6 @@
     <span>© 2026 Patrick Swanson</span>
   </footer>
 
-  <script type="module" src="app.js?v=51"></script>
+  <script type="module" src="app.js?v=53"></script>
 </body>
 </html>
