@@ -250,6 +250,130 @@ function renderDarkMaze(ctx, maze, trail, playerVisualPos, trailColor, cellPx, w
 }
 
 /**
+ * DDA ray cast from (px, py) at the given angle.
+ * Returns { dist, side } where dist is the perpendicular wall distance
+ * and side is 0 (hit a vertical boundary) or 1 (horizontal boundary).
+ */
+function castRayFP(grid, size, px, py, angle) {
+  const rdx = Math.cos(angle);
+  const rdy = Math.sin(angle);
+  let mx = Math.floor(px);
+  let my = Math.floor(py);
+  const ddx = Math.abs(rdx) < 1e-10 ? 1e30 : Math.abs(1 / rdx);
+  const ddy = Math.abs(rdy) < 1e-10 ? 1e30 : Math.abs(1 / rdy);
+  let stepX, stepY, sdx, sdy;
+  if (rdx < 0) { stepX = -1; sdx = (px - mx) * ddx; }
+  else         { stepX =  1; sdx = (mx + 1 - px) * ddx; }
+  if (rdy < 0) { stepY = -1; sdy = (py - my) * ddy; }
+  else         { stepY =  1; sdy = (my + 1 - py) * ddy; }
+  let hit = false, side = 0;
+  const maxSteps = size * 3;
+  for (let i = 0; i < maxSteps && !hit; i++) {
+    if (sdx < sdy) {
+      sdx += ddx; mx += stepX; side = 0;
+      if (mx < 0 || mx >= size) { hit = true; break; }
+      if (grid[my][mx] & (stepX > 0 ? W : E)) hit = true;
+    } else {
+      sdy += ddy; my += stepY; side = 1;
+      if (my < 0 || my >= size) { hit = true; break; }
+      if (grid[my][mx] & (stepY > 0 ? N : S)) hit = true;
+    }
+  }
+  // perpDist: projection used for wall height (corrects fish-eye)
+  const perpDist = Math.max(0.01, side === 0 ? sdx - ddx : sdy - ddy);
+  // actualDist: true Euclidean travel distance, needed for accurate sprite/marker occlusion
+  const wallX = mx + (stepX > 0 ? 0 : 1);
+  const wallY = my + (stepY > 0 ? 0 : 1);
+  const actualDist = Math.max(0.01, side === 0 ? (wallX - px) / rdx : (wallY - py) / rdy);
+  return { dist: perpDist, actualDist, side };
+}
+
+/**
+ * First-person raycasted view of the maze.
+ * playerCell: [cx, cy] integer cell. facingAngle: radians (0=East, PI/2=South).
+ * trailColor: active trail color used for the exit floor marker.
+ */
+function renderFirstPerson(ctx, maze, playerCell, facingAngle, wallColor, trailColor, canvasW, canvasH) {
+  const { grid, size, end } = maze;
+  const px = playerCell[0] + 0.5;
+  const py = playerCell[1] + 0.5;
+  const baseColor = wallColor || WALL_COLOR;
+  const FOV = Math.PI / 3; // 60°
+
+  // 1. Ceiling (cool dark) and floor (warm dark)
+  ctx.fillStyle = '#06060F';
+  ctx.fillRect(0, 0, canvasW, canvasH / 2);
+  ctx.fillStyle = '#0F0904';
+  ctx.fillRect(0, canvasH / 2, canvasW, canvasH / 2);
+
+  // 2. Exit marker — drawn BEFORE walls so the wall columns naturally occlude it.
+  //    No explicit ray test needed; the painter's algorithm handles it correctly.
+  const [ex, ey] = end;
+  const dex = ex + 0.5 - px;
+  const dey = ey + 0.5 - py;
+  const exitDist = Math.sqrt(dex * dex + dey * dey);
+  const exitAngle = Math.atan2(dey, dex);
+  let angleOff = exitAngle - facingAngle;
+  while (angleOff >  Math.PI) angleOff -= 2 * Math.PI;
+  while (angleOff < -Math.PI) angleOff += 2 * Math.PI;
+
+  if (Math.abs(angleOff) < FOV / 2 + 0.15) {
+    const screenX = Math.round(canvasW * (0.5 + angleOff / FOV));
+    const rawFloorY = canvasH / 2 + canvasH / (2 * Math.max(exitDist, 0.5));
+    const floorY = Math.min(canvasH * 0.88, rawFloorY);
+    const r = Math.min(canvasH * 0.07, canvasH * 0.13 / exitDist);
+    const squish = 0.32; // flatten Y to simulate lying flat on the floor
+    const alpha = Math.min(0.95, 0.9 / (exitDist * 0.12 + 0.2));
+    // Soft glow ellipse underneath
+    ctx.globalAlpha = alpha * 0.35;
+    ctx.fillStyle = trailColor;
+    ctx.beginPath();
+    ctx.ellipse(screenX, floorY, r * 2.2, r * squish * 1.8, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Star path with Y squished to look flat on the ground
+    ctx.globalAlpha = alpha;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const a = (i * Math.PI) / 5 - Math.PI / 2;
+      const sr = i % 2 === 0 ? r : r * 0.42;
+      const vx = screenX + sr * Math.cos(a);
+      const vy = floorY  + sr * Math.sin(a) * squish;
+      i === 0 ? ctx.moveTo(vx, vy) : ctx.lineTo(vx, vy);
+    }
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // 3. Wall columns — drawn after the exit marker so they occlude it correctly.
+  //    Each strip gets an opaque black backing first so the wall is never
+  //    semi-transparent over the marker behind it.
+  for (let col = 0; col < canvasW; col++) {
+    const rayAngle = facingAngle + (col / canvasW - 0.5) * FOV;
+    const { dist, side } = castRayFP(grid, size, px, py, rayAngle);
+    const wallH = Math.min(canvasH, Math.floor(canvasH / dist));
+    const wallTop = Math.floor((canvasH - wallH) / 2);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(col, wallTop, 1, wallH);
+    const shade = Math.max(0.08, Math.min(1, 1.4 / (dist + 0.4)));
+    ctx.globalAlpha = shade * (side === 1 ? 0.6 : 1.0);
+    ctx.fillStyle = baseColor;
+    ctx.fillRect(col, wallTop, 1, wallH);
+  }
+  ctx.globalAlpha = 1;
+
+  // 4. Vignette — darkens top/bottom bands so the horizon reads even against a close wall
+  const vign = ctx.createLinearGradient(0, 0, 0, canvasH);
+  vign.addColorStop(0,    'rgba(0,0,0,0.92)');
+  vign.addColorStop(0.14, 'rgba(0,0,0,0)');
+  vign.addColorStop(0.86, 'rgba(0,0,0,0)');
+  vign.addColorStop(1,    'rgba(0,0,0,0.92)');
+  ctx.fillStyle = vign;
+  ctx.fillRect(0, 0, canvasW, canvasH);
+}
+
+/**
  * Render the glyph: all 6 trails overlaid on the same square canvas,
  * no walls or grid. Screen blending makes overlapping paths brighten.
  */
@@ -280,4 +404,5 @@ export {
   renderGlyph,
   renderBlindMaze,
   renderDarkMaze,
+  renderFirstPerson,
 };

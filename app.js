@@ -2,20 +2,26 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=53';
-import { getCanvasSize, renderMaze, renderRecapPanel, renderGlyph, renderBlindMaze, renderDarkMaze } from './render.js?v=53';
-import { createInputHandler } from './input.js?v=53';
-import { createGame, formatTime } from './game.js?v=53';
-import { saveRun, loadRun } from './storage.js?v=53';
-import { isMuted, setMuted, getVolume, setVolume, playMove, playMazeClear, playRunComplete, isGroanMode, setGroanMode, playGroanUnlock, playGroanDisable, playGroanMove } from './sound.js?v=53';
-const REVISION = 53;
-const LATEST_CHANGE = 'Latest update: Settings panel added — adjust volume, toggle sound, and try experimental practice modes: Blind Mode (navigate by sound alone) and Dark Mode (limited flashlight vision).';
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=54';
+import { getCanvasSize, renderMaze, renderRecapPanel, renderGlyph, renderBlindMaze, renderDarkMaze, renderFirstPerson } from './render.js?v=54';
+import { createInputHandler } from './input.js?v=54';
+import { createGame, formatTime } from './game.js?v=54';
+import { saveRun, loadRun } from './storage.js?v=54';
+import { isMuted, setMuted, getVolume, setVolume, playMove, playMazeClear, playRunComplete, isGroanMode, setGroanMode, playGroanUnlock, playGroanDisable, playGroanMove } from './sound.js?v=54';
+const REVISION = 54;
+const LATEST_CHANGE = 'Latest update: Settings panel refinements — experimental mode controls, banner layout, and tooltip improvements.';
 
 // Experimental mode state (practice only)
 let _blindMode = localStorage.getItem('tracer-blind') === 'on';
 let _darkMode  = localStorage.getItem('tracer-dark')  === 'on';
 function isBlindMode() { return _blindMode; }
 function isDarkMode()  { return _darkMode; }
+
+// First-person mode (secret)
+let _fpMode   = false;
+let _fpFacing = 0; // 0=E, 1=S, 2=W, 3=N
+const FACING_DIRS   = ['e', 's', 'w', 'n'];
+const FACING_ANGLES = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2];
 function setBlindMode(val) {
   _blindMode = val;
   if (val) { _darkMode = false; localStorage.setItem('tracer-dark', 'off'); }
@@ -183,6 +189,12 @@ function tickTween(state, now) {
   const ctx = mazeCanvas.getContext('2d');
   const colorIndex = practiceActive ? practiceMazeCount % activeColors.length : state.mazeIndex;
   const color = activeColors[colorIndex];
+
+  // First-person mode (practice only): skip top-down tween and render raycasted view
+  if (_fpMode && practiceActive) {
+    renderFirstPerson(ctx, state.maze, state.playerPos, FACING_ANGLES[_fpFacing], activeWallColor, color, mazeCanvas.width, mazeCanvas.height);
+    return;
+  }
   if (practiceActive && isBlindMode()) {
     const [sx, sy] = state.maze.start;
     const atStart = Math.hypot(playerVisualPos[0] - (sx + 0.5), playerVisualPos[1] - (sy + 0.5)) < 0.15;
@@ -437,6 +449,7 @@ function launchPracticeMaze(autoStart = false) {
         pendingPos = null;
         lastKnownPos = [state.playerPos[0], state.playerPos[1]];
         lastFrameTime = 0;
+        _fpFacing = 0;
         inputHandler.reset?.();
       }
       updateUI(state);
@@ -557,6 +570,10 @@ function updateSettingsUI() {
   darkToggle.classList.toggle('on', isDarkMode());
 
   document.getElementById('settings-volume').value = getVolume();
+
+  // Disable experimental mode rows while FP mode is active
+  blindToggle.closest('.settings-row').classList.toggle('settings-row-disabled', _fpMode);
+  darkToggle.closest('.settings-row').classList.toggle('settings-row-disabled', _fpMode);
 }
 
 function openSettings() {
@@ -588,14 +605,16 @@ function buildRolloverHint() {
 
 const SECRET_CODE = ['ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight'];
 let secretBuffer = [];
+const FP_CODE = ['ArrowUp', 'ArrowDown', 'ArrowUp', 'ArrowDown', 'ArrowUp', 'ArrowDown'];
+let fpBuffer = [];
 
 function updateGroanBanner() {
   const banner = document.getElementById('groan-banner');
-  if (isGroanMode()) {
-    banner.classList.remove('hidden');
-  } else {
-    banner.classList.add('hidden');
-  }
+  banner.classList.toggle('hidden', !isGroanMode());
+}
+
+function updateFPBanner() {
+  document.getElementById('fp-banner').classList.toggle('hidden', !_fpMode);
 }
 
 function init() {
@@ -609,16 +628,44 @@ function init() {
     updateGroanBanner();
     playGroanDisable();
   });
+  updateFPBanner();
+  document.getElementById('btn-fp-off').addEventListener('click', () => {
+    _fpMode = false;
+    updateFPBanner();
+    updateSettingsUI();
+  });
 
   document.addEventListener('keydown', (e) => {
-    if (!document.getElementById('landing').classList.contains('active')) return;
-    secretBuffer.push(e.key);
-    if (secretBuffer.length > SECRET_CODE.length) secretBuffer.shift();
-    if (secretBuffer.join(',') === SECRET_CODE.join(',')) {
-      secretBuffer = [];
-      setGroanMode(true);
-      updateGroanBanner();
-      playGroanUnlock();
+    const onLanding  = document.getElementById('landing').classList.contains('active');
+    const onGameplay = document.getElementById('gameplay').classList.contains('active');
+
+    // Groan code: landing screen only
+    if (onLanding) {
+      secretBuffer.push(e.key);
+      if (secretBuffer.length > SECRET_CODE.length) secretBuffer.shift();
+      if (secretBuffer.join(',') === SECRET_CODE.join(',')) {
+        secretBuffer = [];
+        setGroanMode(true);
+        updateGroanBanner();
+        playGroanUnlock();
+      }
+    }
+
+    // FP code: landing or gameplay (toggle in and out mid-maze)
+    if (onLanding || onGameplay) {
+      fpBuffer.push(e.key);
+      if (fpBuffer.length > FP_CODE.length) fpBuffer.shift();
+      if (fpBuffer.join(',') === FP_CODE.join(',')) {
+        fpBuffer = [];
+        _fpMode = !_fpMode;
+        _fpFacing = 0;
+        if (_fpMode) {
+          setBlindMode(false);
+          setDarkMode(false);
+          updateSettingsUI();
+        }
+        updateFPBanner();
+      }
     }
   });
   btnHistory.innerHTML = ICON_HISTORY;
@@ -722,6 +769,18 @@ function init() {
 
   inputHandler = createInputHandler((dir) => {
     if (countdownActive) return;
+    if (_fpMode && practiceActive) {
+      if (dir === 'n') { // Up/W → move forward
+        if (game.tryMove(FACING_DIRS[_fpFacing])) isGroanMode() ? playGroanMove(getMoveProximity()) : playMove(getMoveProximity());
+      } else if (dir === 's') { // Down/S → move backward
+        if (game.tryMove(FACING_DIRS[(_fpFacing + 2) % 4])) isGroanMode() ? playGroanMove(getMoveProximity()) : playMove(getMoveProximity());
+      } else if (dir === 'w') { // Left/A → turn left (counter-clockwise)
+        _fpFacing = (_fpFacing + 3) % 4;
+      } else if (dir === 'e') { // Right/D → turn right (clockwise)
+        _fpFacing = (_fpFacing + 1) % 4;
+      }
+      return;
+    }
     if (game.tryMove(dir)) isGroanMode() ? playGroanMove(getMoveProximity()) : playMove(getMoveProximity());
   });
 
@@ -749,6 +808,7 @@ function init() {
       }
       const onPointer = (e) => {
         if (countdownActive) return;
+        if (_fpMode && practiceActive) return;
         const cell = getCellFromEvent(e);
         if (!cell) return;
         if (game.tryMoveToCell(cell[0], cell[1])) {

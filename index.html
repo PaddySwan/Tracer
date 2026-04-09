@@ -12,15 +12,23 @@
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="icon" href="assets/favicon.ico">
-  <link rel="stylesheet" href="styles.css?v=53">
+  <link rel="stylesheet" href="styles.css?v=54">
 </head>
 <body>
   <div id="app">
-    <!-- Landing Screen -->
-    <section id="landing" class="screen active">
+    <!-- Active mode banners (stacked, top-right) -->
+    <div class="active-banners">
       <div id="groan-banner" class="groan-banner hidden">
         🤢 Groan Mode <button id="btn-groan-off" class="btn-groan-off">Disable</button>
       </div>
+      <div id="fp-banner" class="fp-banner hidden">
+        👁 First Person <span class="banner-info" data-tooltip="Practice only · ↑/W: forward · ↓/S: back · ←/A: turn left · →/D: turn right">?</span>
+        <button id="btn-fp-off" class="btn-fp-off">Disable</button>
+      </div>
+    </div>
+
+    <!-- Landing Screen -->
+    <section id="landing" class="screen active">
       <h1 class="logo">Tracer</h1>
       <p class="tagline">Six mazes. One clock.</p>
       <p id="day-number" class="day-number"></p>
@@ -162,6 +170,6 @@
     <span>© 2026 Patrick Swanson</span>
   </footer>
 
-  <script type="module" src="app.js?v=53"></script>
+  <script type="module" src="app.js?v=54"></script>
 </body>
 </html>
