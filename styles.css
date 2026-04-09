@@ -157,6 +157,18 @@ html, body {
   margin-top: 0.75rem;
 }
 
+.rollover-hint {
+  position: fixed;
+  bottom: 1rem;
+  left: 1.25rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  opacity: 0.5;
+  letter-spacing: 0.01em;
+  text-align: left;
+  white-space: pre;
+}
+
 .landing-actions-row {
   display: flex;
   gap: 0.5rem;
@@ -203,12 +215,33 @@ html, body {
 
 .revision {
   position: fixed;
-  bottom: 1rem;
-  left: 1.25rem;
+  bottom: 2.25rem;
+  right: 1.25rem;
   font-size: 0.75rem;
   color: var(--text-secondary);
   opacity: 0.6;
   z-index: 50;
+  text-align: right;
+  cursor: default;
+}
+
+.revision[data-tooltip]:hover::before {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: 1.5rem;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  white-space: normal;
+  width: 400px;
+  text-align: left;
+  pointer-events: none;
+  z-index: 100;
+  line-height: 1.4;
 }
 
 /* Gameplay */

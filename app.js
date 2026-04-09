@@ -2,13 +2,14 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=49';
-import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=49';
-import { createInputHandler } from './input.js?v=49';
-import { createGame, formatTime } from './game.js?v=49';
-import { saveRun, loadRun } from './storage.js?v=49';
-import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=49';
-const REVISION = 49;
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=51';
+import { getCanvasSize, renderMaze, renderRecapPanel } from './render.js?v=51';
+import { createInputHandler } from './input.js?v=51';
+import { createGame, formatTime } from './game.js?v=51';
+import { saveRun, loadRun } from './storage.js?v=51';
+import { isMuted, setMuted, playMove, playMazeClear, playRunComplete } from './sound.js?v=51';
+const REVISION = 51;
+const LATEST_CHANGE = 'Latest update: Daily maze rollover time (midnight UTC) now shown on the home screen with local equivalents for PT, ET, CET, and JST.';
 
 const ICON_SOUND    = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
 const ICON_MUTE     = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
@@ -530,8 +531,26 @@ function closeHistory() {
   historyOverlay.setAttribute('aria-hidden', 'true');
 }
 
+function buildRolloverHint() {
+  const now = new Date();
+  const nextMidnightUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const zones = [
+    { label: 'PT',  tz: 'America/Los_Angeles' },
+    { label: 'ET',  tz: 'America/New_York' },
+    { label: 'CET', tz: 'Europe/Paris' },
+    { label: 'JST', tz: 'Asia/Tokyo' },
+  ];
+  const fmt = (tz) => new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric', minute: '2-digit', hour12: true, timeZone: tz,
+  }).format(nextMidnightUTC).toLowerCase().replace(':00', '');
+  const times = zones.map(({ label, tz }) => `${label} ${fmt(tz)}`);
+  return `Resets midnight UTC\n${times.slice(0, 2).join(' · ')}\n${times.slice(2).join(' · ')}`;
+}
+
 function init() {
   revisionEl.textContent = `Revision ${REVISION}`;
+  revisionEl.dataset.tooltip = LATEST_CHANGE;
+  document.getElementById('rollover-hint').textContent = buildRolloverHint();
   btnHistory.innerHTML = ICON_HISTORY;
   btnHistory.addEventListener('click', openHistory);
   historyOverlay.addEventListener('click', (e) => {

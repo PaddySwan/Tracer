@@ -70,3 +70,5 @@ Bump `REVISION` in `app.js` and add a row to the changelog below when shipping a
 | 41 | Mobile layout fix: maze now fits the screen without scrolling |
 | 42 | Mute button moved below the maze with a cleaner icon |
 | 46 | History view: tap the calendar icon on the home screen to see every day you've played this year, color-coded by speed |
+| 50 | Mazes now use UTC date so all players worldwide get the same puzzles each day |
+| 51 | Landing screen shows when daily mazes reset (midnight UTC) with local time equivalents for PT, ET, GMT, CET, IST, and JST |
