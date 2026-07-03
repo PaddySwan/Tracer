@@ -2,14 +2,14 @@
  * Tracer — App entry: screens, countdown, game loop, recap.
  */
 
-import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=54';
-import { getCanvasSize, renderMaze, renderRecapPanel, renderGlyph, renderBlindMaze, renderDarkMaze, renderFirstPerson } from './render.js?v=54';
-import { createInputHandler } from './input.js?v=54';
-import { createGame, formatTime } from './game.js?v=54';
-import { saveRun, loadRun } from './storage.js?v=54';
-import { isMuted, setMuted, getVolume, setVolume, playMove, playMazeClear, playRunComplete, isGroanMode, setGroanMode, playGroanUnlock, playGroanDisable, playGroanMove } from './sound.js?v=54';
-const REVISION = 54;
-const LATEST_CHANGE = 'Latest update: Settings panel refinements — experimental mode controls, banner layout, and tooltip improvements.';
+import { getDailySeed, generateDailyMazes, generateMaze, mulberry32, getHoliday, MAZE_SIZES, TRAIL_COLORS, TRAIL_EMOJIS } from './maze.js?v=55';
+import { getCanvasSize, renderMaze, renderRecapPanel, renderGlyph, renderBlindMaze, renderDarkMaze, renderFirstPerson } from './render.js?v=55';
+import { createInputHandler } from './input.js?v=55';
+import { createGame, formatTime } from './game.js?v=55';
+import { saveRun, loadRun } from './storage.js?v=55';
+import { isMuted, setMuted, getVolume, setVolume, playMove, playMazeClear, playRunComplete, isGroanMode, setGroanMode, playGroanUnlock, playGroanDisable, playGroanMove } from './sound.js?v=55';
+const REVISION = 55;
+const LATEST_CHANGE = 'Latest update: History calendar now uses the same UTC day boundary as the daily puzzle, fixing a mismatch where a completed run could appear on the wrong day near the rollover.';
 
 // Experimental mode state (practice only)
 let _blindMode = localStorage.getItem('tracer-blind') === 'on';
@@ -470,10 +470,14 @@ function launchPracticeMaze(autoStart = false) {
 }
 
 function openHistory() {
-  const year = new Date().getFullYear();
-  const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
-  const jan1 = new Date(year, 0, 1);
-  const startOffset = (jan1.getDay() + 6) % 7; // Mon=0 … Sun=6
+  // Run keys are saved under getDailySeed(), which is a UTC calendar day (revision 51 — same
+  // puzzle for everyone regardless of timezone). Every date computed below uses UTC parts too,
+  // so a filled-in cell always lines up with the day that was actually "today" when it was
+  // played, instead of drifting against the player's local clock near the UTC rollover.
+  const year = new Date().getUTCFullYear();
+  const todayKey = getDailySeed();
+  const jan1 = new Date(Date.UTC(year, 0, 1));
+  const startOffset = (jan1.getUTCDay() + 6) % 7; // Mon=0 … Sun=6
   const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
   const daysInYear = isLeap ? 366 : 365;
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -482,9 +486,9 @@ function openHistory() {
   // Read only totalMs from existing run keys — no extra storage needed
   const totalMsByDay = {};
   for (let i = 0; i < daysInYear; i++) {
-    const d = new Date(year, 0, 1 + i);
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
+    const d = new Date(Date.UTC(year, 0, 1 + i));
+    const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(d.getUTCDate()).padStart(2, '0');
     try {
       const raw = localStorage.getItem(`tracer_run_${year}-${mm}-${dd}`);
       if (raw) totalMsByDay[i] = JSON.parse(raw).totalMs;
@@ -497,8 +501,8 @@ function openHistory() {
   // Which week index does each month start in?
   const monthAtWeek = {};
   for (let i = 0; i < daysInYear; i++) {
-    const d = new Date(year, 0, 1 + i);
-    if (d.getDate() === 1) monthAtWeek[Math.floor((startOffset + i) / 7)] = MONTHS[d.getMonth()];
+    const d = new Date(Date.UTC(year, 0, 1 + i));
+    if (d.getUTCDate() === 1) monthAtWeek[Math.floor((startOffset + i) / 7)] = MONTHS[d.getUTCMonth()];
   }
 
   historyTitleEl.textContent = String(year);
@@ -531,11 +535,13 @@ function openHistory() {
       if (dayIdx < 0 || dayIdx >= daysInYear) {
         cell.classList.add('hc-empty');
       } else {
-        const date = new Date(year, 0, 1 + dayIdx);
-        if (date.getTime() === todayStart.getTime()) cell.classList.add('hc-today');
+        const date = new Date(Date.UTC(year, 0, 1 + dayIdx));
+        const mm = String(date.getUTCMonth() + 1).padStart(2, '0');
+        const dd = String(date.getUTCDate()).padStart(2, '0');
+        if (`${year}-${mm}-${dd}` === todayKey) cell.classList.add('hc-today');
         if (totalMsByDay[dayIdx] != null) {
           cell.style.background = getTimeColor(totalMsByDay[dayIdx]);
-          const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const label = `${MONTHS[date.getUTCMonth()]} ${date.getUTCDate()}`;
           cell.title = `${label} — ${formatTime(totalMsByDay[dayIdx])}`;
         }
         // unplayed (past or future) keeps default dark .history-cell style
