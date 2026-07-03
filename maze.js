@@ -35,6 +35,14 @@ function _thanksgivingDay(year) {
   return firstThursday + 21;
 }
 
+function _independenceObservedDay(year) {
+  // Federal observance: Sat → preceding Friday, Sun → following Monday
+  const dow = new Date(year, 6, 4).getDay();
+  if (dow === 6) return 3;
+  if (dow === 0) return 5;
+  return 4;
+}
+
 const HOLIDAYS = {
   //                                                                                                              accent       wallColor
   newyear:      { name: "New Year's Day",    greeting: "Happy New Year! 🎆",          accentColor: '#FFD700', wallColor: null,      trailColors: ['#FFD700','#C0C0C0','#1D4DFF','#9B59B6','#FF8C00','#00BFFF'], trailEmojis: ['🌟','🥂','🎊','💫','🎆','✨'] },
@@ -56,7 +64,7 @@ function getHoliday(date) {
   if (month === 3  && day === 17) return HOLIDAYS.stpatricks;
   const e = _easterDate(year);
   if (month === e.month && day === e.day) return HOLIDAYS.easter;
-  if (month === 7  && day === 4)  return HOLIDAYS.independence;
+  if (month === 7  && (day === 4 || day === _independenceObservedDay(year))) return HOLIDAYS.independence;
   if (month === 10 && day === 31) return HOLIDAYS.halloween;
   if (month === 11 && day === _thanksgivingDay(year)) return HOLIDAYS.thanksgiving;
   if (month === 12 && day === 25) return HOLIDAYS.christmas;
